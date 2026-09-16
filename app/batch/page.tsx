@@ -45,6 +45,40 @@ interface MatchedRow {
   error: string | null;
 }
 
+const BATCH_CONCURRENCY = 4;
+const MAX_BATCH_SIZE = 100;
+const MAX_RATE_LIMIT_RETRIES = 3;
+
+async function verifyOne(
+  fileName: string,
+  image: File,
+  applicationData: ApplicationData,
+  onWaiting: (seconds: number) => void,
+  attempt = 1,
+): Promise<Omit<BatchApiItem, "index">> {
+  const formData = new FormData();
+  formData.set("image", image);
+  formData.set("applicationData", JSON.stringify(applicationData));
+
+  const res = await fetch("/api/verify", { method: "POST", body: formData });
+
+  if (res.status === 429) {
+    if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+      return { fileName, error: "Rate limited — try this one again in a few minutes." };
+    }
+    const retryAfter = Number(res.headers.get("Retry-After") ?? "30");
+    onWaiting(retryAfter);
+    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    return verifyOne(fileName, image, applicationData, onWaiting, attempt + 1);
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    return { fileName, error: data.error || "Verification failed." };
+  }
+  return data as Omit<BatchApiItem, "index">;
+}
+
 function downloadTemplate() {
   const blob = new Blob([applicationsCsvTemplate()], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -104,28 +138,45 @@ export default function BatchPage() {
       setError("No fully matched rows to process — upload images and a matching CSV first.");
       return;
     }
+    if (readyRows.length > MAX_BATCH_SIZE) {
+      setError(`Please process ${MAX_BATCH_SIZE} labels or fewer at a time on this demo.`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    setResults(null);
-    setProgressNote(`Processing ${readyRows.length} labels…`);
+    setResults(readyRows.map((row, index) => ({ index, fileName: row.fileName })));
 
-    try {
-      const formData = new FormData();
-      formData.set("count", String(readyRows.length));
-      readyRows.forEach((row, i) => {
-        formData.set(`image_${i}`, row.image as File);
-        formData.set(`applicationData_${i}`, JSON.stringify(row.applicationData));
-      });
-      const res = await fetch("/api/verify-batch", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Batch verification failed.");
-      setResults(data.results as BatchApiItem[]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-      setProgressNote(null);
+    let completed = 0;
+    const total = readyRows.length;
+    setProgressNote(`Processing 0 of ${total}…`);
+
+    const queue = readyRows.map((row, index) => ({ ...row, index }));
+    let cursor = 0;
+
+    async function worker() {
+      while (cursor < queue.length) {
+        const row = queue[cursor++];
+        const outcome = await verifyOne(
+          row.fileName,
+          row.image as File,
+          row.applicationData as ApplicationData,
+          (seconds) => setProgressNote(`Shared demo rate limit hit — resuming in ${seconds}s (${completed}/${total} done)…`),
+        );
+        completed += 1;
+        setProgressNote(`Processing ${completed} of ${total}…`);
+        setResults((prev) => {
+          const next = [...(prev ?? [])];
+          next[row.index] = { ...outcome, index: row.index };
+          return next;
+        });
+      }
     }
+
+    await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, queue.length) }, worker));
+
+    setLoading(false);
+    setProgressNote(null);
   }
 
   const summary = useMemo(() => {
@@ -187,7 +238,7 @@ export default function BatchPage() {
       <div className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div>
           <h2 className="mb-2 text-sm font-semibold text-foreground">1. Label photos</h2>
-          <ImageDropzone multiple files={images} onChange={setImages} label="Upload label photos" hint="Multiple files supported — up to 300 per batch" />
+          <ImageDropzone multiple files={images} onChange={setImages} label="Upload label photos" hint={`Multiple files supported — up to ${MAX_BATCH_SIZE} per run, 4 MB each`} />
         </div>
 
         <div>
@@ -337,5 +388,6 @@ function StatusIcon({ item }: { item: BatchApiItem }) {
   if (item.error) return <XCircle className="h-4 w-4 text-rose-600" />;
   if (item.overallStatus === "pass") return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
   if (item.overallStatus === "review") return <AlertTriangle className="h-4 w-4 text-amber-600" />;
-  return <XCircle className="h-4 w-4 text-rose-600" />;
+  if (item.overallStatus === "fail") return <XCircle className="h-4 w-4 text-rose-600" />;
+  return <Loader2 className="h-4 w-4 animate-spin text-muted" />;
 }

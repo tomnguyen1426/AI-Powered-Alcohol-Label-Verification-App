@@ -4,12 +4,21 @@ import { ApplicationDataSchema } from "@/lib/schema";
 import { extractLabelFields } from "@/lib/extract";
 import { compareLabelToApplication, overallStatusFrom } from "@/lib/compare";
 import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/lib/constants";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
+
+  const rateLimit = checkRateLimit(getClientIp(req));
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "This demo is rate-limited to keep API costs in check. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
 
   let formData: FormData;
   try {
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
     );
   }
   if (image.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: "Image is too large (10 MB max)." }, { status: 400 });
+    return NextResponse.json({ error: "Image is too large (4 MB max)." }, { status: 400 });
   }
 
   let applicationData;

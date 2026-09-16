@@ -18,7 +18,7 @@ export default function ImageDropzone({
   files,
   onChange,
   label = "Upload label photo",
-  hint = "PNG, JPEG, or WEBP — up to 10 MB",
+  hint = "PNG, JPEG, or WEBP — up to 4 MB",
 }: ImageDropzoneProps) {
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

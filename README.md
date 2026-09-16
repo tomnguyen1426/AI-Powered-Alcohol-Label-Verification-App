@@ -30,8 +30,8 @@ requirements:
   plain-language PASS / NEEDS REVIEW / FAIL banner before any detail table. No settings screen, no
   jargon.
 - **Batch upload.** Addresses Janet's recurring ask: upload a stack of label photos plus a CSV of
-  the matching application data, and the whole batch (up to 300 labels) processes concurrently
-  instead of one at a time.
+  the matching application data, and the whole batch processes with a few labels in flight at once
+  instead of strictly one at a time.
 - **Imperfect photos.** The extraction prompt explicitly tells the model to do its best on angled,
   glared, or low-resolution photos and to note quality issues rather than refuse — addressing
   Jenny's stretch-goal ask — instead of the current behavior of rejecting and asking for a reshoot.
@@ -52,6 +52,9 @@ requirements:
 - **No database.** Everything is processed in memory per request and returned to the browser; the
   app does not persist label images, extracted text, or application data anywhere. This matches the
   "don't store anything sensitive for this exercise" guidance from IT.
+- **Per-IP rate limiting.** Every route that calls Claude is throttled ([lib/rate-limit.ts](lib/rate-limit.ts))
+  to protect the API key this demo runs on from runaway cost. It's intentionally simple (in-memory,
+  resets on cold start) — see **Trade-offs** below for the honest limits of that approach.
 
 ## Getting started
 
@@ -97,8 +100,10 @@ npm start
 1. The agent enters the fields from the COLA application (brand name, class/type, ABV, net
    contents, producer/address, country of origin, beverage type, import flag) or loads a sample.
 2. A label photo is uploaded (single check) or a batch of photos + a CSV (batch check).
-3. The server sends the image to Claude with a strict extraction schema — one API call per label,
-   run concurrently in batches of 5.
+3. The server sends the image to Claude with a strict extraction schema — one API call per label.
+   In batch mode the browser fires these requests itself, a few at a time, instead of bundling every
+   photo into a single upload (see **Trade-offs** — that split exists for a real platform-limit
+   reason, not just style).
 4. The extracted fields are compared to the application data with the rules described above.
 5. Each field gets a status (**Match** / **Review** / **Mismatch** / **N/A**) and the label gets an
    overall status (**Pass** / **Needs Review** / **Fail**), shown with the source image, the
@@ -140,8 +145,25 @@ npm start
   purposes, with appropriate PII/retention controls — intentionally out of scope for this
   prototype per the "don't store anything sensitive" guidance.
 - **CSV-based batch matching.** Batch mode matches images to application data by exact filename.
-  It's simple and auditable, but a real 200–300-application bulk-import workflow would probably
-  want matching by an application/COLA ID rather than filename discipline.
+  It's simple and auditable, but a real high-volume bulk-import workflow would probably want
+  matching by an application/COLA ID rather than filename discipline.
+- **Batch mode sends one image per HTTP request, by necessity, not preference.** Vercel serverless
+  functions cap the whole request body at roughly 4.5 MB, which rules out bundling a stack of label
+  photos into a single upload — a handful of normal photos would already blow past that. Instead
+  the browser dispatches one request per label with a small client-side concurrency pool, which
+  also means each one is individually covered by the rate limiter below. The trade-off: a very
+  large batch now takes proportionally longer (and can pause mid-run if it hits the rate limit)
+  rather than finishing as one atomic server-side job.
+- **Rate limiting is a soft, best-effort guard, not a hard cap.** The limiter in
+  [lib/rate-limit.ts](lib/rate-limit.ts) is per-process in-memory state — on Vercel that means it's
+  scoped to whichever warm serverless instance handles a given request, not shared globally, and it
+  resets on a cold start or redeploy. It's good enough to stop casual abuse and to fail a demo
+  gracefully with a message instead of a raw error, but it is **not** a substitute for setting an
+  actual monthly spend cap on the Anthropic API key itself in the Anthropic Console — that's the
+  only real guarantee against runaway cost, and it's a account-level setting this app can't
+  configure for you.
+- **No authentication.** Anyone with the URL can run a check — appropriate for an internal
+  review/demo prototype, not for a multi-tenant production system.
 - **English-language labels only.** The extraction prompt and Government Warning text assume
   English-language labeling.
 - **Single warning statement text.** Some bottle sizes/categories have alternate or abbreviated
@@ -155,14 +177,14 @@ app/
   page.tsx              Landing page
   verify/page.tsx        Single-label check UI
   batch/page.tsx          Batch check UI
-  api/verify/route.ts      Single-label API
-  api/verify-batch/route.ts Batch API (concurrency-limited)
+  api/verify/route.ts      Single-label API (also used per-label by batch mode)
 lib/
   schema.ts               Zod schemas (application data + AI extraction)
   extract.ts               Claude vision call
   compare.ts                Matching/comparison rules
   csv.ts                     CSV parsing for batch mode
-  sample-data.ts               Sample label metadata
+  rate-limit.ts                Per-IP request throttling
+  sample-data.ts                 Sample label metadata
 components/                     UI components
 scripts/generate-sample-labels.ts  Synthetic label image generator
 ```
