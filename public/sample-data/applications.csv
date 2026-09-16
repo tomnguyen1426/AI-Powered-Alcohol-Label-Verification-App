@@ -1,0 +1,7 @@
+file_name,brand_name,class_type,beverage_type,alcohol_content_percent,net_contents,producer_name_address,country_of_origin,is_import
+old-tom-bourbon-clean.png,OLD TOM DISTILLERY,Kentucky Straight Bourbon Whiskey,distilled_spirits,45,750 mL,"Bottled by Old Tom Distillery, Bardstown, KY",,false
+stones-throw-gin-case-diff.png,STONE'S THROW,London Dry Gin,distilled_spirits,47,750 mL,"Distilled by Stone's Throw Distilling Co., Portland, OR",,false
+harbor-vodka-warning-titlecase.png,HARBOR LIGHT VODKA,Vodka Distilled from Grain,distilled_spirits,40,1 L,"Harbor Light Spirits Co., Seattle, WA",,false
+summit-rum-abv-mismatch.png,SUMMIT RIDGE RUM,Gold Rum,distilled_spirits,40,750 mL,"Summit Ridge Distillers, Denver, CO",,false
+blue-ridge-whiskey-glare.png,BLUE RIDGE RESERVE,Tennessee Whiskey,distilled_spirits,43,750 mL,"Blue Ridge Reserve Distilling, Lynchburg, TN",,false
+castaway-import-rum.png,CASTAWAY GOLD,Rum,distilled_spirits,40,750 mL,"Imported by Castaway Spirits Importers, Miami, FL","Product of Jamaica",true
