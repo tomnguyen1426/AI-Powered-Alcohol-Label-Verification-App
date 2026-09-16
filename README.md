@@ -5,7 +5,7 @@ the data on a compliance application — the core of what TTB label-compliance a
 today. Built as a standalone proof of concept; it does not integrate with COLAs Online or any
 production TTB system.
 
-**Live demo:** _add your deployed URL here_
+**Live demo:** https://alcohol-label-verification-three.vercel.app
 
 ## Why it's built this way
 
