@@ -16,7 +16,7 @@ import ImageDropzone from "@/components/ImageDropzone";
 import ApplicationForm from "@/components/ApplicationForm";
 import ResultPanel from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
-import Queue, { addToQueue } from "@/components/Queue";
+import { logCheck } from "@/lib/review-log-store";
 import { SAMPLE_LABELS } from "@/lib/sample-data";
 import type { ApplicationData, VerificationResult } from "@/lib/schema";
 
@@ -142,7 +142,7 @@ export default function CheckPage() {
         setError(outcome.error);
       } else if (outcome.result) {
         setSingleResult(outcome.result);
-        addToQueue(outcome.result);
+        logCheck(outcome.result);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -177,7 +177,7 @@ export default function CheckPage() {
         );
         completed += 1;
         setProgressNote(`Processing ${completed} of ${total}…`);
-        if (outcome.result) addToQueue(outcome.result);
+        if (outcome.result) logCheck(outcome.result);
         setBatchItems((prev) => {
           const next = [...(prev ?? [])];
           next[item.index] = { index: item.index, fileName: item.file.name, ...outcome };
@@ -396,8 +396,6 @@ export default function CheckPage() {
           </div>
         </div>
       )}
-
-      <Queue />
     </div>
   );
 }

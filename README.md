@@ -41,8 +41,8 @@ requirements:
 - **Imperfect photos.** The extraction prompt explicitly tells the model to do its best on angled,
   glared, or low-resolution photos and to note quality issues rather than refuse — addressing
   Jenny's stretch-goal ask — instead of the current behavior of rejecting and asking for a reshoot.
-- **A queue to work through, not just a one-off result.** Every check (single or batch) lands in a
-  running queue at the bottom of the page, where it can be marked Approved / Rejected / Flagged for
+- **A Review Log to work through, not just a one-off result.** Every check (single or batch) lands
+  in a running log on its own page, where it can be marked Approved / Rejected / Flagged for
   follow-up — the decision a human actually makes, which is separate from and can override the
   tool's own PASS/REVIEW/FAIL read. See **What actually persists** below for exactly what that does
   and doesn't save.
@@ -65,7 +65,7 @@ requirements:
 - **No server-side database.** Every check is processed in memory for that one request and returned
   to the browser — the server itself never writes a label image, extracted text, or application
   data anywhere. This matches the "don't store anything sensitive for this exercise" guidance from
-  IT. The queue (previous bullet) is the one place anything is kept at all, and it's entirely
+  IT. The Review Log (previous bullet) is the one place anything is kept at all, and it's entirely
   client-side — see **What actually persists** below.
 - **Per-IP rate limiting.** Every route that calls Claude is throttled ([lib/rate-limit.ts](lib/rate-limit.ts))
   to protect the API key this demo runs on from runaway cost. It's intentionally simple (in-memory,
@@ -138,22 +138,22 @@ because this is the kind of thing worth being precise about:
 |---|---|---|---|---|
 | The label image you upload | No | Sent to Claude for that one request, then discarded server-side | — | No |
 | Application data you type in | No | Only in page state (React), sent in that one request | No — clearing the form or reloading loses it | No |
-| A check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Queue | **Yes** | No — never leaves your browser |
-| A check's image, inside the Queue | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
-| Your Approve/Reject/Flag decisions | **Yes** | Browser `localStorage`, alongside the queue item | **Yes** | No |
+| A check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Review Log | **Yes** | No — never leaves your browser |
+| A check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
+| Your Approve/Reject/Flag decisions | **Yes** | Browser `localStorage`, alongside the log entry | **Yes** | No |
 | Anthropic API key | N/A | Server-side environment variable only | — | Never sent to the browser |
 
-In plain terms: the Queue at the bottom of the page is real and does persist — reload the page,
-close the tab, come back tomorrow, it's still there — but it lives only in that one browser, on
-that one device. It's not a database, nobody else who opens the deployed URL sees your queue, it
-doesn't sync between your phone and your laptop, and clearing your browser's site data deletes it
-permanently with no way to recover it. The one thing it deliberately doesn't keep is the label photo
-itself past the current page load, specifically so a long day of checks doesn't run into browser
-storage limits (localStorage is typically capped around 5–10 MB per site, and photos are the only
-thing here large enough to hit that).
+In plain terms: the Review Log is real and does persist — reload the page, close the tab, come back
+tomorrow, it's still there — but it lives only in that one browser, on that one device. It's not a
+database, nobody else who opens the deployed URL sees your log, it doesn't sync between your phone
+and your laptop, and clearing your browser's site data deletes it permanently with no way to
+recover it. The one thing it deliberately doesn't keep is the label photo itself past the current
+page load, specifically so a long day of checks doesn't run into browser storage limits
+(localStorage is typically capped around 5–10 MB per site, and photos are the only thing here large
+enough to hit that).
 
-If you want the queue to actually survive across people or devices — a real shared team
-queue — that needs a server-side database and is explicitly not what this prototype does; see
+If you want the log to actually survive across people or devices — a real shared team queue — that
+needs a server-side database and is explicitly not what this prototype does; see
 **Trade-offs & limitations**.
 
 ## Assumptions
@@ -192,9 +192,9 @@ queue — that needs a server-side database and is explicitly not what this prot
   vendor's features — worth flagging early with IT rather than discovering it during a deployment,
   since a production rollout inside TTB's network would need that traffic explicitly allowed (or a
   self-hosted/VPC-routed model deployment).
-- **No shared/server-side persistence, no real audit trail.** The Queue is real but browser-local
-  only (see **What actually persists**) — it's not a shared queue other agents or a supervisor can
-  see, doesn't survive switching devices, and isn't the kind of tamper-evident audit log a
+- **No shared/server-side persistence, no real audit trail.** The Review Log is real but
+  browser-local only (see **What actually persists**) — it's not shared with other agents or a
+  supervisor, doesn't survive switching devices, and isn't the kind of tamper-evident audit log a
   production compliance system would need. A real deployment would need to log verification results
   against the application ID server-side, with appropriate PII/retention controls — intentionally
   out of scope for this prototype per the "don't store anything sensitive" guidance.
@@ -225,17 +225,21 @@ queue — that needs a server-side database and is explicitly not what this prot
 
 ```
 app/
-  page.tsx              The whole UI — one photo or many, comparison or self-check
-  api/verify/route.ts     API — branches to comparison or self-check depending on whether
-                            applicationData was sent
+  page.tsx                Check — one photo or many, comparison or self-check
+  history/page.tsx          Review Log — every past check, with approve/reject/flag
+  api/verify/route.ts         API — branches to comparison or self-check depending on whether
+                                applicationData was sent
 lib/
   schema.ts               Zod schemas (application data + AI extraction)
   extract.ts               Claude vision call
   compare.ts                 Field-by-field comparison against application data
   self-check.ts               Per-field format validation with no application data
   rate-limit.ts                 Per-IP request throttling
-  queue.ts                        localStorage read/write for the Queue (image stripped before saving)
-  sample-data.ts                    Sample label metadata
-components/                          UI components (ThemeToggle.tsx = dark mode switch, Queue.tsx = the queue)
-scripts/generate-sample-labels.ts       Synthetic label image generator
+  review-log.ts                   localStorage read/write for the Review Log (image stripped
+                                    before saving)
+  review-log-store.ts               Reactive in-memory store over review-log.ts, shared by the
+                                      Check page (to log a result) and the Review Log page
+  sample-data.ts                      Sample label metadata
+components/                              UI components (ThemeToggle.tsx = dark mode switch)
+scripts/generate-sample-labels.ts           Synthetic label image generator
 ```
