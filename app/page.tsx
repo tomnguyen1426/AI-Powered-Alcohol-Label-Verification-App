@@ -205,8 +205,8 @@ export default function CheckPage() {
       handleVerifyBatch();
       return;
     }
-    if (!application.brand_name.trim() || !application.class_type.trim()) {
-      setError("Brand Name and Class/Type Designation are required to check against.");
+    if (!application.brand_name.trim()) {
+      setError("Brand Name is required to check against.");
       return;
     }
     handleVerifySingle();

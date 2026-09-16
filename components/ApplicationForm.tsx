@@ -52,7 +52,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         />
       </Field>
 
-      <Field label="Beverage Type">
+      <Field label="Beverage Type" required>
         <select
           className={inputClasses}
           value={value.beverage_type}
@@ -66,7 +66,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         </select>
       </Field>
 
-      <Field label="Class/Type Designation" required>
+      <Field label="Class/Type Designation">
         <input
           className={inputClasses}
           value={value.class_type}
