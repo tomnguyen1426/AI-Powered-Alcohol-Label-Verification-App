@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
+import clsx from "clsx";
 
 function subscribe(callback: () => void) {
   const observer = new MutationObserver(callback);
@@ -33,11 +34,23 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={isDark}
       onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-foreground hover:bg-surface"
+      aria-label={isDark ? "Dark mode on — switch to light mode" : "Light mode on — switch to dark mode"}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      className="relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border border-border bg-surface px-0.5 transition-colors"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <Sun className="absolute left-1.5 h-3.5 w-3.5 text-muted" />
+      <Moon className="absolute right-1.5 h-3.5 w-3.5 text-muted" />
+      <span
+        className={clsx(
+          "z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform",
+          isDark ? "translate-x-8" : "translate-x-0",
+        )}
+      >
+        {isDark ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
+      </span>
     </button>
   );
 }

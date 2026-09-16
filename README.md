@@ -28,10 +28,16 @@ requirements:
   **Mismatch**.
 - **Built for Dave and Sarah's mother, not just Jenny.** One upload zone, one form, one button, a
   plain-language PASS / NEEDS REVIEW / FAIL banner before any detail table. No settings screen, no
-  jargon, no marketing landing page to click through — the tool itself is the front page.
-- **Batch upload.** Addresses Janet's recurring ask: upload a stack of label photos plus a CSV of
-  the matching application data, and the whole batch processes with a few labels in flight at once
-  instead of strictly one at a time.
+  jargon, no marketing landing page to click through — the tool itself is the front page. The one
+  setting that does exist — light/dark — is an explicit labeled switch, not an icon someone has to
+  guess the meaning of.
+- **Batch upload, no spreadsheet required.** Addresses Janet's recurring ask, but skips the CSV
+  step entirely: drop in more than one photo and each label is validated against its own required
+  fields (Government Warning wording/formatting, ABV, net contents, brand name, class/type) instead
+  of against typed-in application data — there's nothing to fill in, and nothing to matching-by-
+  filename against a spreadsheet. Upload exactly one photo instead and you get the full
+  field-by-field comparison against application data, as normal. A few labels process concurrently
+  rather than strictly one at a time either way.
 - **Imperfect photos.** The extraction prompt explicitly tells the model to do its best on angled,
   glared, or low-resolution photos and to note quality issues rather than refuse — addressing
   Jenny's stretch-goal ask — instead of the current behavior of rejecting and asking for a reshoot.
@@ -44,11 +50,13 @@ requirements:
   image content block; the model returns a strictly-typed extraction (Zod schema in
   [lib/schema.ts](lib/schema.ts)) via `output_config.format`, so there's no free-text parsing of
   the model's response.
-- **Custom comparison engine** ([lib/compare.ts](lib/compare.ts)) — normalized-text matching with a
-  Levenshtein-similarity "Review" band for brand name / class-type / producer address, unit-aware
-  parsing for net contents (mL/L/oz), tolerance-based ABV comparison, and the strict Government
-  Warning check described above. No AI is involved in the comparison itself — only in reading the
-  label — so results are deterministic and explainable.
+- **Two comparison engines, same extraction.** [lib/compare.ts](lib/compare.ts) does the
+  field-by-field comparison against application data (normalized-text matching with a
+  Levenshtein-similarity "Review" band, unit-aware net contents parsing, tolerance-based ABV
+  comparison, the strict Government Warning check). [lib/self-check.ts](lib/self-check.ts) is the
+  no-application-data path used by batch mode — it validates each field's own presence and format
+  (still enforcing the Government Warning word-for-word) rather than comparing it to anything.
+  Neither is AI — only the label reading is — so results are deterministic and explainable.
 - **No database.** Everything is processed in memory per request and returned to the browser; the
   app does not persist label images, extracted text, or application data anywhere. This matches the
   "don't store anything sensitive for this exercise" guidance from IT.
@@ -77,10 +85,11 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Sample data
 
 Six synthetic label images (no real brands) are already generated into `public/sample-labels/`,
-along with a matching `public/sample-data/applications.csv`. They cover the specific scenarios
-above: a clean pass, a harmless brand-name case difference, a strict warning-formatting failure, a
-genuine ABV mismatch, a glare-affected photo, and an import with country-of-origin. Use the
-"Try a sample label" / "Load sample batch" buttons in the UI, or regenerate/extend them with:
+each with matching application data baked into [lib/sample-data.ts](lib/sample-data.ts). They cover
+the specific scenarios above: a clean pass, a harmless brand-name case difference, a strict
+warning-formatting failure, a genuine ABV mismatch, a glare-affected photo, and an import with
+country-of-origin. Use the sample buttons in the UI — one per label for the comparison path, or
+"load all 6 as a batch" for the self-check path — or regenerate/extend them with:
 
 ```bash
 npm run gen:labels
@@ -97,17 +106,21 @@ npm start
 
 ## How verification works
 
-1. The agent enters the fields from the COLA application (brand name, class/type, ABV, net
-   contents, producer/address, country of origin, beverage type, import flag) or loads a sample.
-2. A label photo is uploaded (single check) or a batch of photos + a CSV (batch check).
-3. The server sends the image to Claude with a strict extraction schema — one API call per label.
-   In batch mode the browser fires these requests itself, a few at a time, instead of bundling every
-   photo into a single upload (see **Trade-offs** — that split exists for a real platform-limit
-   reason, not just style).
-4. The extracted fields are compared to the application data with the rules described above.
-5. Each field gets a status (**Match** / **Review** / **Mismatch** / **N/A**) and the label gets an
-   overall status (**Pass** / **Needs Review** / **Fail**), shown with the source image, the
-   per-field readout, and the processing time.
+There's one upload zone. What happens next depends on how many photos land in it:
+
+1. **One photo** → the application-data form appears. Fill in what's on file (brand name,
+   class/type, ABV, net contents, producer/address, country of origin, beverage type, import flag)
+   or load a sample, then verify. The server sends the image to Claude with a strict extraction
+   schema, then runs the field-by-field comparison in [lib/compare.ts](lib/compare.ts). Each field
+   gets **Match** / **Review** / **Mismatch** / **N/A**, and the label gets an overall **Pass** /
+   **Needs Review** / **Fail**.
+2. **More than one photo** → the form disappears; nothing to type in. Each photo gets its own
+   `/api/verify` request (the browser fires these itself, a few at a time — see **Trade-offs** for
+   why that's a platform-limit thing, not a style choice) and is validated in
+   [lib/self-check.ts](lib/self-check.ts) against its own required fields instead of anything typed
+   in. Each label ends up **OK**, **Needs Review**, or **Flagged**.
+
+Both paths show the source image, a per-field readout, and the processing time.
 
 ## Assumptions
 
@@ -122,6 +135,11 @@ npm start
   import.
 - **The standard Government Warning text** is hard-coded from 27 CFR 16.21 as the single source of
   truth to check against, rather than accepting it as an application field.
+- **Self-check mode (batch) can't catch a label that's simply wrong for the product applied for.**
+  Without application data to compare against, it can only confirm required fields are present and
+  well-formed (warning wording, ABV/net-contents format, etc.) — it can't tell you the ABV doesn't
+  match what was actually filed, because it has nothing to compare it to. That's the trade for not
+  needing a spreadsheet; use the single-photo comparison path when the exact match matters.
 
 ## Trade-offs & limitations
 
@@ -144,9 +162,6 @@ npm start
   real applications would need to log verification results against the application ID for audit
   purposes, with appropriate PII/retention controls — intentionally out of scope for this
   prototype per the "don't store anything sensitive" guidance.
-- **CSV-based batch matching.** Batch mode matches images to application data by exact filename.
-  It's simple and auditable, but a real high-volume bulk-import workflow would probably want
-  matching by an application/COLA ID rather than filename discipline.
 - **Batch mode sends one image per HTTP request, by necessity, not preference.** Vercel serverless
   functions cap the whole request body at roughly 4.5 MB, which rules out bundling a stack of label
   photos into a single upload — a handful of normal photos would already blow past that. Instead
@@ -174,16 +189,16 @@ npm start
 
 ```
 app/
-  page.tsx              Single-label check UI (the app's root — no separate landing page)
-  batch/page.tsx          Batch check UI
-  api/verify/route.ts      Single-label API (also used per-label by batch mode)
+  page.tsx              The whole UI — one photo or many, comparison or self-check
+  api/verify/route.ts     API — branches to comparison or self-check depending on whether
+                            applicationData was sent
 lib/
   schema.ts               Zod schemas (application data + AI extraction)
   extract.ts               Claude vision call
-  compare.ts                Matching/comparison rules
-  csv.ts                     CSV parsing for batch mode
-  rate-limit.ts                Per-IP request throttling
-  sample-data.ts                 Sample label metadata
-components/                     UI components
-scripts/generate-sample-labels.ts  Synthetic label image generator
+  compare.ts                 Field-by-field comparison against application data
+  self-check.ts               Per-field format validation with no application data
+  rate-limit.ts                 Per-IP request throttling
+  sample-data.ts                  Sample label metadata
+components/                        UI components (ThemeToggle.tsx = the dark mode switch)
+scripts/generate-sample-labels.ts     Synthetic label image generator
 ```

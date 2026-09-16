@@ -59,9 +59,15 @@ export interface FieldComparison {
 
 export type OverallStatus = "pass" | "review" | "fail";
 
+// "comparison": checked field-by-field against application data the user supplied.
+// "self_check": no application data available — each field is validated against
+// its own required format instead (used for batch mode, see lib/self-check.ts).
+export type CheckMode = "comparison" | "self_check";
+
 export interface VerificationResult {
   id: string;
   fileName: string;
+  mode: CheckMode;
   extraction: LabelExtraction;
   comparisons: FieldComparison[];
   overallStatus: OverallStatus;

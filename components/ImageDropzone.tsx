@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { UploadCloud, ImageIcon, X } from "lucide-react";
+import { UploadCloud, ImageIcon, X, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
-import { ACCEPTED_IMAGE_TYPES } from "@/lib/constants";
+import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 interface ImageDropzoneProps {
   multiple?: boolean;
@@ -21,11 +21,19 @@ export default function ImageDropzone({
   hint = "PNG, JPEG, or WEBP — up to 4 MB",
 }: ImageDropzoneProps) {
   const [dragActive, setDragActive] = useState(false);
+  const [rejected, setRejected] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = useCallback(
     (incoming: FileList | File[]) => {
-      const valid = Array.from(incoming).filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type));
+      const all = Array.from(incoming);
+      const valid = all.filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_UPLOAD_BYTES);
+      const invalid = all.filter((f) => !ACCEPTED_IMAGE_TYPES.includes(f.type));
+      const tooLarge = all.filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type) && f.size > MAX_UPLOAD_BYTES);
+      setRejected([
+        ...invalid.map((f) => `${f.name} (unsupported type)`),
+        ...tooLarge.map((f) => `${f.name} (over 4 MB)`),
+      ]);
       onChange(multiple ? [...files, ...valid] : valid.slice(0, 1));
     },
     [files, multiple, onChange],
@@ -66,6 +74,13 @@ export default function ImageDropzone({
           onChange={(e) => e.target.files && addFiles(e.target.files)}
         />
       </div>
+
+      {rejected.length > 0 && (
+        <div className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Skipped: {rejected.join(", ")}</span>
+        </div>
+      )}
 
       {files.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-2">
