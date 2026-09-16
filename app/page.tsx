@@ -203,9 +203,13 @@ export default function CheckPage() {
     }
     if (isBatch) {
       handleVerifyBatch();
-    } else {
-      handleVerifySingle();
+      return;
     }
+    if (!application.brand_name.trim() || !application.class_type.trim()) {
+      setError("Brand Name and Class/Type Designation are required to check against.");
+      return;
+    }
+    handleVerifySingle();
   }
 
   function toggleExpand(index: number) {

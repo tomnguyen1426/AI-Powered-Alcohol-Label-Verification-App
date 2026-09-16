@@ -14,10 +14,21 @@ interface ApplicationFormProps {
   onChange: (value: ApplicationData) => void;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
+}) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-foreground">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-foreground">
+        {label}
+        {required && <span className="text-rose-600 dark:text-rose-400"> *</span>}
+      </span>
       {children}
     </label>
   );
@@ -32,7 +43,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Brand Name">
+      <Field label="Brand Name" required>
         <input
           className={inputClasses}
           value={value.brand_name}
@@ -55,7 +66,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         </select>
       </Field>
 
-      <Field label="Class/Type Designation">
+      <Field label="Class/Type Designation" required>
         <input
           className={inputClasses}
           value={value.class_type}
