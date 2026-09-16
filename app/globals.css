@@ -1,14 +1,31 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #f6f7fb;
-  --foreground: #0f172a;
+  --background: #fafafa;
+  --foreground: #0a0a0a;
   --card: #ffffff;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --primary: #1e3a8a;
+  --border: #e5e5e5;
+  --muted: #6b6b6b;
+  --primary: #171717;
   --primary-foreground: #ffffff;
-  --accent: #2563eb;
+  --accent: #171717;
+  --surface: #f5f5f5;
+  --surface-hover: #ececec;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f2f2f2;
+  --card: #141414;
+  --border: #2a2a2a;
+  --muted: #9a9a9a;
+  --primary: #f2f2f2;
+  --primary-foreground: #0a0a0a;
+  --accent: #f2f2f2;
+  --surface: #1a1a1a;
+  --surface-hover: #242424;
 }
 
 @theme inline {
@@ -20,6 +37,8 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-accent: var(--accent);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -31,5 +50,6 @@ body {
 }
 
 ::selection {
-  background: #bfdbfe;
+  background: var(--foreground);
+  color: var(--background);
 }

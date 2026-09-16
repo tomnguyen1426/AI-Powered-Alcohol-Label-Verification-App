@@ -12,7 +12,7 @@ const summaryCopy = {
 export default function ResultPanel({ result }: { result: VerificationResult }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-slate-50 px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-surface px-5 py-4">
         <div>
           <p className="text-sm text-muted">{result.fileName}</p>
           <div className="mt-1">
@@ -29,7 +29,7 @@ export default function ResultPanel({ result }: { result: VerificationResult }) 
       <div className="grid gap-0 sm:grid-cols-[220px_1fr]">
         {result.imageDataUrl && (
           <div className="border-b border-border p-4 sm:border-b-0 sm:border-r">
-            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg border border-border bg-slate-100">
+            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg border border-border bg-surface">
               <Image
                 src={result.imageDataUrl}
                 alt={`Label image: ${result.fileName}`}
@@ -39,7 +39,7 @@ export default function ResultPanel({ result }: { result: VerificationResult }) 
               />
             </div>
             {result.extraction.image_quality_issues.length > 0 && (
-              <p className="mt-2 text-xs text-amber-700">
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
                 Image notes: {result.extraction.image_quality_issues.join("; ")}
               </p>
             )}

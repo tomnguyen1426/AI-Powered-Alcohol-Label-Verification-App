@@ -50,7 +50,7 @@ export default function ImageDropzone({
         }}
         className={clsx(
           "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
-          dragActive ? "border-accent bg-blue-50" : "border-border bg-slate-50 hover:bg-slate-100",
+          dragActive ? "border-accent bg-surface-hover" : "border-border bg-surface hover:bg-surface-hover",
         )}
       >
         <UploadCloud className="h-8 w-8 text-accent" />
@@ -79,7 +79,7 @@ export default function ImageDropzone({
               <button
                 type="button"
                 onClick={() => onChange(files.filter((_, idx) => idx !== i))}
-                className="text-muted hover:text-rose-600"
+                className="text-muted hover:text-rose-600 dark:hover:text-rose-400"
                 aria-label={`Remove ${file.name}`}
               >
                 <X className="h-3.5 w-3.5" />

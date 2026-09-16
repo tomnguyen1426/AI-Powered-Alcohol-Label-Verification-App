@@ -1,4 +1,4 @@
-# LabelCheck AI — Alcohol Label Verification Prototype
+# Label Check — Alcohol Label Verification Prototype
 
 A prototype that reads a photo of an alcohol beverage label and checks it, field by field, against
 the data on a compliance application — the core of what TTB label-compliance agents do manually
@@ -28,7 +28,7 @@ requirements:
   **Mismatch**.
 - **Built for Dave and Sarah's mother, not just Jenny.** One upload zone, one form, one button, a
   plain-language PASS / NEEDS REVIEW / FAIL banner before any detail table. No settings screen, no
-  jargon.
+  jargon, no marketing landing page to click through — the tool itself is the front page.
 - **Batch upload.** Addresses Janet's recurring ask: upload a stack of label photos plus a CSV of
   the matching application data, and the whole batch processes with a few labels in flight at once
   instead of strictly one at a time.
@@ -174,8 +174,7 @@ npm start
 
 ```
 app/
-  page.tsx              Landing page
-  verify/page.tsx        Single-label check UI
+  page.tsx              Single-label check UI (the app's root — no separate landing page)
   batch/page.tsx          Batch check UI
   api/verify/route.ts      Single-label API (also used per-label by batch mode)
 lib/

@@ -1,104 +1,127 @@
-import Link from "next/link";
-import { ScanLine, Zap, Layers, ShieldCheck, ArrowRight } from "lucide-react";
+"use client";
 
-const features = [
-  {
-    icon: Zap,
-    title: "Seconds, not minutes",
-    body: "Each label is read and cross-checked in a few seconds, so it fits into how agents already work instead of replacing it.",
-  },
-  {
-    icon: Layers,
-    title: "Batch-ready",
-    body: "Upload a whole shipment of label photos with a CSV of application data and process the entire stack in one pass.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Exact where it must be",
-    body: "The Government Warning statement is checked word-for-word and for bold/all-caps formatting. Brand names get room for harmless formatting differences, not real mismatches.",
-  },
-];
+import { useState } from "react";
+import { Loader2, Sparkles, AlertCircle } from "lucide-react";
+import ImageDropzone from "@/components/ImageDropzone";
+import ApplicationForm from "@/components/ApplicationForm";
+import ResultPanel from "@/components/ResultPanel";
+import { SAMPLE_LABELS } from "@/lib/sample-data";
+import type { ApplicationData, VerificationResult } from "@/lib/schema";
 
-const steps = [
-  {
-    step: "1",
-    title: "Enter what's on file",
-    body: "Type or paste the brand name, class/type, ABV, net contents, and other fields from the application.",
-  },
-  {
-    step: "2",
-    title: "Upload the label photo",
-    body: "Drop in a photo of the bottle or can label — angled or glare-heavy shots are fine, the tool will flag quality issues rather than fail silently.",
-  },
-  {
-    step: "3",
-    title: "Get a field-by-field readout",
-    body: "Each required field is marked Match, Review, or Mismatch, with a plain-language overall Pass / Needs Review / Fail result.",
-  },
-];
+const emptyApplication: ApplicationData = {
+  brand_name: "",
+  class_type: "",
+  beverage_type: "distilled_spirits",
+  alcohol_content_percent: null,
+  net_contents: "",
+  producer_name_address: "",
+  country_of_origin: "",
+  is_import: false,
+};
 
-export default function Home() {
+export default function SingleCheckPage() {
+  const [files, setFiles] = useState<File[]>([]);
+  const [application, setApplication] = useState<ApplicationData>(emptyApplication);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<VerificationResult | null>(null);
+
+  async function loadSample(index: number) {
+    const sample = SAMPLE_LABELS[index];
+    const res = await fetch(sample.imageUrl);
+    const blob = await res.blob();
+    const file = new File([blob], sample.fileName, { type: blob.type });
+    setFiles([file]);
+    setApplication(sample.applicationData);
+    setResult(null);
+    setError(null);
+  }
+
+  async function handleSubmit() {
+    if (files.length === 0) {
+      setError("Upload a label image first.");
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    setResult(null);
+    try {
+      const formData = new FormData();
+      formData.set("image", files[0]);
+      formData.set("applicationData", JSON.stringify(application));
+      const res = await fetch("/api/verify", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Verification failed.");
+      setResult(data as VerificationResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div>
-      <section className="border-b border-border bg-gradient-to-b from-blue-50 to-background">
-        <div className="mx-auto max-w-5xl px-4 py-16 text-center sm:px-6 sm:py-24">
-          <span className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-            <ScanLine className="h-7 w-7" />
-          </span>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            Label review, at a glance
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-muted sm:text-lg">
-            A prototype that reads an alcohol label photo and checks it against the application on
-            file — brand name, class/type, ABV, net contents, and the Government Warning statement —
-            so agents can spend their time on judgment calls instead of manual matching.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/verify"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-blue-900"
-            >
-              Check a single label
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/batch"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground hover:bg-slate-50"
-            >
-              Check a batch of labels
-            </Link>
-          </div>
-        </div>
-      </section>
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Single Label Check</h1>
+        <p className="mt-1 text-sm text-muted">
+          Upload one label photo, enter what&apos;s on the application, and verify in a few seconds.
+        </p>
+      </div>
 
-      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
-        <div className="grid gap-6 sm:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <f.icon className="h-6 w-6 text-accent" />
-              <h3 className="mt-3 text-base font-semibold text-foreground">{f.title}</h3>
-              <p className="mt-1.5 text-sm text-muted">{f.body}</p>
-            </div>
+      <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+          <Sparkles className="h-4 w-4 text-accent" />
+          Try a sample label
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {SAMPLE_LABELS.map((s, i) => (
+            <button
+              key={s.fileName}
+              type="button"
+              onClick={() => loadSample(i)}
+              title={s.description}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:border-accent hover:bg-surface-hover"
+            >
+              {s.fileName.replace(/\.png$/, "").replace(/-/g, " ")}
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      <section className="border-t border-border bg-slate-50">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
-          <h2 className="text-center text-2xl font-semibold text-foreground">How it works</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-3">
-            {steps.map((s) => (
-              <div key={s.step} className="text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                  {s.step}
-                </div>
-                <h3 className="mt-3 text-sm font-semibold text-foreground">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-muted">{s.body}</p>
-              </div>
-            ))}
+      <div className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <ImageDropzone files={files} onChange={setFiles} />
+        <ApplicationForm value={application} onChange={setApplication} />
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            {error}
           </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Verifying label… (usually under 5 seconds)
+            </>
+          ) : (
+            "Verify Label"
+          )}
+        </button>
+      </div>
+
+      {result && (
+        <div className="mt-8">
+          <ResultPanel result={result} />
         </div>
-      </section>
+      )}
     </div>
   );
 }

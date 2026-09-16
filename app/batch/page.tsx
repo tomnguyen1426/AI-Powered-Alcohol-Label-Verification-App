@@ -220,7 +220,7 @@ export default function BatchPage() {
         <button
           type="button"
           onClick={loadSampleBatch}
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-slate-50 px-3 py-1.5 text-xs font-medium hover:border-accent hover:bg-blue-50"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium hover:border-accent hover:bg-surface-hover"
         >
           <Sparkles className="h-3.5 w-3.5 text-accent" />
           Load sample batch (6 labels)
@@ -228,7 +228,7 @@ export default function BatchPage() {
         <button
           type="button"
           onClick={downloadTemplate}
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-slate-50 px-3 py-1.5 text-xs font-medium hover:border-accent hover:bg-blue-50"
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium hover:border-accent hover:bg-surface-hover"
         >
           <Download className="h-3.5 w-3.5 text-accent" />
           Download CSV template
@@ -243,7 +243,7 @@ export default function BatchPage() {
 
         <div>
           <h2 className="mb-2 text-sm font-semibold text-foreground">2. Application data (CSV)</h2>
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border bg-slate-50 px-4 py-3 text-sm hover:bg-slate-100">
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border bg-surface px-4 py-3 text-sm hover:bg-surface-hover">
             <FileSpreadsheet className="h-5 w-5 text-accent" />
             <span>{csvFileName ?? "Click to upload a CSV (file_name column must match your image file names)"}</span>
             <input
@@ -260,7 +260,7 @@ export default function BatchPage() {
             <h2 className="mb-2 text-sm font-semibold text-foreground">3. Review matches</h2>
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-muted">
+                <thead className="bg-surface text-xs uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2">File</th>
                     <th className="px-3 py-2">Brand on file</th>
@@ -274,11 +274,11 @@ export default function BatchPage() {
                       <td className="px-3 py-2 text-muted">{row.applicationData?.brand_name ?? "—"}</td>
                       <td className="px-3 py-2">
                         {row.error ? (
-                          <span className="inline-flex items-center gap-1 text-rose-700">
+                          <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400">
                             <AlertCircle className="h-3.5 w-3.5" /> {row.error}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-emerald-700">
+                          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Ready
                           </span>
                         )}
@@ -292,7 +292,7 @@ export default function BatchPage() {
         )}
 
         {error && (
-          <div className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </div>
@@ -302,7 +302,7 @@ export default function BatchPage() {
           type="button"
           onClick={handleProcessBatch}
           disabled={loading || readyRows.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <>
@@ -319,9 +319,9 @@ export default function BatchPage() {
         <div className="mt-8">
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <SummaryCard label="Total" value={summary.total} />
-            <SummaryCard label="Pass" value={summary.pass} tone="text-emerald-700" />
-            <SummaryCard label="Review" value={summary.review} tone="text-amber-700" />
-            <SummaryCard label="Fail" value={summary.fail} tone="text-rose-700" />
+            <SummaryCard label="Pass" value={summary.pass} tone="text-emerald-700 dark:text-emerald-400" />
+            <SummaryCard label="Review" value={summary.review} tone="text-amber-700 dark:text-amber-400" />
+            <SummaryCard label="Fail" value={summary.fail} tone="text-rose-700 dark:text-rose-400" />
             <SummaryCard label="Avg time" value={`${(summary.avgMs / 1000).toFixed(1)}s`} />
           </div>
 
@@ -331,7 +331,7 @@ export default function BatchPage() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                  filter === f ? "bg-primary text-primary-foreground" : "border border-border bg-white text-muted hover:bg-slate-50"
+                  filter === f ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted hover:bg-surface"
                 }`}
               >
                 {f}
@@ -353,7 +353,7 @@ export default function BatchPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {item.overallStatus && <OverallStatusBadge status={item.overallStatus} size="sm" />}
-                    {item.error && <span className="text-xs text-rose-700">{item.error}</span>}
+                    {item.error && <span className="text-xs text-rose-700 dark:text-rose-400">{item.error}</span>}
                     {expanded.has(item.index) ? (
                       <ChevronUp className="h-4 w-4 text-muted" />
                     ) : (
@@ -385,9 +385,9 @@ function SummaryCard({ label, value, tone }: { label: string; value: string | nu
 }
 
 function StatusIcon({ item }: { item: BatchApiItem }) {
-  if (item.error) return <XCircle className="h-4 w-4 text-rose-600" />;
-  if (item.overallStatus === "pass") return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
-  if (item.overallStatus === "review") return <AlertTriangle className="h-4 w-4 text-amber-600" />;
-  if (item.overallStatus === "fail") return <XCircle className="h-4 w-4 text-rose-600" />;
+  if (item.error) return <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
+  if (item.overallStatus === "pass") return <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+  if (item.overallStatus === "review") return <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+  if (item.overallStatus === "fail") return <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
   return <Loader2 className="h-4 w-4 animate-spin text-muted" />;
 }

@@ -27,7 +27,7 @@ function Field({
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-foreground">
         {label}
-        {required && <span className="text-rose-600"> *</span>}
+        {required && <span className="text-rose-600 dark:text-rose-400"> *</span>}
       </span>
       {children}
     </label>
@@ -35,7 +35,7 @@ function Field({
 }
 
 const inputClasses =
-  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
+  "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export default function ApplicationForm({ value, onChange }: ApplicationFormProps) {
   const set = <K extends keyof ApplicationData>(key: K, v: ApplicationData[K]) =>
