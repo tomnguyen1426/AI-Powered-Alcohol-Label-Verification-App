@@ -41,6 +41,11 @@ requirements:
 - **Imperfect photos.** The extraction prompt explicitly tells the model to do its best on angled,
   glared, or low-resolution photos and to note quality issues rather than refuse — addressing
   Jenny's stretch-goal ask — instead of the current behavior of rejecting and asking for a reshoot.
+- **A queue to work through, not just a one-off result.** Every check (single or batch) lands in a
+  running queue at the bottom of the page, where it can be marked Approved / Rejected / Flagged for
+  follow-up — the decision a human actually makes, which is separate from and can override the
+  tool's own PASS/REVIEW/FAIL read. See **What actually persists** below for exactly what that does
+  and doesn't save.
 
 ## Tech stack
 
@@ -57,9 +62,11 @@ requirements:
   no-application-data path used by batch mode — it validates each field's own presence and format
   (still enforcing the Government Warning word-for-word) rather than comparing it to anything.
   Neither is AI — only the label reading is — so results are deterministic and explainable.
-- **No database.** Everything is processed in memory per request and returned to the browser; the
-  app does not persist label images, extracted text, or application data anywhere. This matches the
-  "don't store anything sensitive for this exercise" guidance from IT.
+- **No server-side database.** Every check is processed in memory for that one request and returned
+  to the browser — the server itself never writes a label image, extracted text, or application
+  data anywhere. This matches the "don't store anything sensitive for this exercise" guidance from
+  IT. The queue (previous bullet) is the one place anything is kept at all, and it's entirely
+  client-side — see **What actually persists** below.
 - **Per-IP rate limiting.** Every route that calls Claude is throttled ([lib/rate-limit.ts](lib/rate-limit.ts))
   to protect the API key this demo runs on from runaway cost. It's intentionally simple (in-memory,
   resets on cold start) — see **Trade-offs** below for the honest limits of that approach.
@@ -122,6 +129,33 @@ There's one upload zone. What happens next depends on how many photos land in it
 
 Both paths show the source image, a per-field readout, and the processing time.
 
+## What actually persists
+
+Short version: **nothing leaves your browser, and the server keeps nothing at all.** Longer version,
+because this is the kind of thing worth being precise about:
+
+| | Persists? | Where | Survives a reload? | Visible to anyone else? |
+|---|---|---|---|---|
+| The label image you upload | No | Sent to Claude for that one request, then discarded server-side | — | No |
+| Application data you type in | No | Only in page state (React), sent in that one request | No — clearing the form or reloading loses it | No |
+| A check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Queue | **Yes** | No — never leaves your browser |
+| A check's image, inside the Queue | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
+| Your Approve/Reject/Flag decisions | **Yes** | Browser `localStorage`, alongside the queue item | **Yes** | No |
+| Anthropic API key | N/A | Server-side environment variable only | — | Never sent to the browser |
+
+In plain terms: the Queue at the bottom of the page is real and does persist — reload the page,
+close the tab, come back tomorrow, it's still there — but it lives only in that one browser, on
+that one device. It's not a database, nobody else who opens the deployed URL sees your queue, it
+doesn't sync between your phone and your laptop, and clearing your browser's site data deletes it
+permanently with no way to recover it. The one thing it deliberately doesn't keep is the label photo
+itself past the current page load, specifically so a long day of checks doesn't run into browser
+storage limits (localStorage is typically capped around 5–10 MB per site, and photos are the only
+thing here large enough to hit that).
+
+If you want the queue to actually survive across people or devices — a real shared team
+queue — that needs a server-side database and is explicitly not what this prototype does; see
+**Trade-offs & limitations**.
+
 ## Assumptions
 
 - **ABV tolerance:** ±0.3 percentage points is treated as a match, to absorb rounding — a
@@ -158,10 +192,12 @@ Both paths show the source image, a per-field readout, and the processing time.
   vendor's features — worth flagging early with IT rather than discovering it during a deployment,
   since a production rollout inside TTB's network would need that traffic explicitly allowed (or a
   self-hosted/VPC-routed model deployment).
-- **No persistence / no audit trail.** Nothing is saved server-side. A production system handling
-  real applications would need to log verification results against the application ID for audit
-  purposes, with appropriate PII/retention controls — intentionally out of scope for this
-  prototype per the "don't store anything sensitive" guidance.
+- **No shared/server-side persistence, no real audit trail.** The Queue is real but browser-local
+  only (see **What actually persists**) — it's not a shared queue other agents or a supervisor can
+  see, doesn't survive switching devices, and isn't the kind of tamper-evident audit log a
+  production compliance system would need. A real deployment would need to log verification results
+  against the application ID server-side, with appropriate PII/retention controls — intentionally
+  out of scope for this prototype per the "don't store anything sensitive" guidance.
 - **Batch mode sends one image per HTTP request, by necessity, not preference.** Vercel serverless
   functions cap the whole request body at roughly 4.5 MB, which rules out bundling a stack of label
   photos into a single upload — a handful of normal photos would already blow past that. Instead
@@ -198,7 +234,8 @@ lib/
   compare.ts                 Field-by-field comparison against application data
   self-check.ts               Per-field format validation with no application data
   rate-limit.ts                 Per-IP request throttling
-  sample-data.ts                  Sample label metadata
-components/                        UI components (ThemeToggle.tsx = the dark mode switch)
-scripts/generate-sample-labels.ts     Synthetic label image generator
+  queue.ts                        localStorage read/write for the Queue (image stripped before saving)
+  sample-data.ts                    Sample label metadata
+components/                          UI components (ThemeToggle.tsx = dark mode switch, Queue.tsx = the queue)
+scripts/generate-sample-labels.ts       Synthetic label image generator
 ```
