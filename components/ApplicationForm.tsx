@@ -1,13 +1,7 @@
 "use client";
 
 import type { ApplicationData } from "@/lib/schema";
-import { BEVERAGE_TYPES } from "@/lib/constants";
-
-const beverageLabels: Record<(typeof BEVERAGE_TYPES)[number], string> = {
-  distilled_spirits: "Distilled Spirits",
-  wine: "Wine",
-  beer: "Beer / Malt Beverage",
-};
+import { BEVERAGE_TYPES, BEVERAGE_TYPE_LABELS } from "@/lib/constants";
 
 interface ApplicationFormProps {
   value: ApplicationData;
@@ -52,15 +46,16 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         />
       </Field>
 
-      <Field label="Beverage Type" required>
+      <Field label="Beverage Type">
         <select
           className={inputClasses}
-          value={value.beverage_type}
-          onChange={(e) => set("beverage_type", e.target.value as ApplicationData["beverage_type"])}
+          value={value.beverage_type ?? ""}
+          onChange={(e) => set("beverage_type", (e.target.value || null) as ApplicationData["beverage_type"])}
         >
+          <option value="">Auto-detect from label</option>
           {BEVERAGE_TYPES.map((t) => (
             <option key={t} value={t}>
-              {beverageLabels[t]}
+              {BEVERAGE_TYPE_LABELS[t]}
             </option>
           ))}
         </select>

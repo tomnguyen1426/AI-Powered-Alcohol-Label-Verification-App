@@ -1,4 +1,4 @@
-import { ABV_TOLERANCE_PERCENT, STANDARD_GOVERNMENT_WARNING } from "./constants";
+import { ABV_TOLERANCE_PERCENT, BEVERAGE_TYPE_LABELS, STANDARD_GOVERNMENT_WARNING } from "./constants";
 import type {
   ApplicationData,
   FieldComparison,
@@ -261,12 +261,48 @@ function compareWarning(extraction: LabelExtraction): FieldComparison {
   };
 }
 
+function compareBeverageType(
+  applicationValue: ApplicationData["beverage_type"],
+  extraction: LabelExtraction,
+): FieldComparison {
+  const field = "beverage_type";
+  const label = "Beverage Type";
+  const labelValue = BEVERAGE_TYPE_LABELS[extraction.beverage_type];
+
+  if (applicationValue === null) {
+    // Agent chose "Auto-detect from label" — nothing to compare, just show
+    // what Claude classified it as.
+    return {
+      field,
+      label,
+      applicationValue: labelValue,
+      labelValue,
+      status: "not_applicable",
+      note: "Auto-detected from label — not compared against anything on file",
+    };
+  }
+
+  if (applicationValue === extraction.beverage_type) {
+    return { field, label, applicationValue: BEVERAGE_TYPE_LABELS[applicationValue], labelValue, status: "match" };
+  }
+
+  return {
+    field,
+    label,
+    applicationValue: BEVERAGE_TYPE_LABELS[applicationValue],
+    labelValue,
+    status: "mismatch",
+    note: "The label reads as a different beverage category than what's on file",
+  };
+}
+
 export function compareLabelToApplication(
   extraction: LabelExtraction,
   application: ApplicationData,
 ): FieldComparison[] {
   const comparisons: FieldComparison[] = [
     compareText("brand_name", "Brand Name", application.brand_name, extraction.brand_name),
+    compareBeverageType(application.beverage_type, extraction),
     compareText(
       "class_type",
       "Class/Type Designation",

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   Loader2,
-  Sparkles,
   AlertCircle,
   RotateCcw,
   ChevronDown,
@@ -14,16 +13,15 @@ import {
 } from "lucide-react";
 import ImageDropzone from "@/components/ImageDropzone";
 import ApplicationForm from "@/components/ApplicationForm";
-import ResultPanel from "@/components/ResultPanel";
+import ResultPanel, { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
 import { logCheck } from "@/lib/review-log-store";
-import { SAMPLE_LABELS } from "@/lib/sample-data";
 import type { ApplicationData, VerificationResult } from "@/lib/schema";
 
 const emptyApplication: ApplicationData = {
   brand_name: "",
   class_type: "",
-  beverage_type: "distilled_spirits",
+  beverage_type: null,
   alcohol_content_percent: null,
   net_contents: "",
   producer_name_address: "",
@@ -114,24 +112,6 @@ export default function CheckPage() {
     resetOutputs();
   }
 
-  async function loadSample(index: number) {
-    const sample = SAMPLE_LABELS[index];
-    const res = await fetch(sample.imageUrl);
-    const blob = await res.blob();
-    const file = new File([blob], sample.fileName, { type: blob.type });
-    setFiles([file]);
-    setApplication(sample.applicationData);
-    resetOutputs();
-  }
-
-  async function loadSampleBatch() {
-    resetOutputs();
-    const blobs = await Promise.all(SAMPLE_LABELS.map((s) => fetch(s.imageUrl).then((r) => r.blob())));
-    const sampleFiles = SAMPLE_LABELS.map((s, i) => new File([blobs[i]], s.fileName, { type: blobs[i].type }));
-    setFiles(sampleFiles);
-    setApplication(emptyApplication);
-  }
-
   async function handleVerifySingle() {
     setError(null);
     setLoading(true);
@@ -209,10 +189,6 @@ export default function CheckPage() {
       setError("Brand Name is required to check against.");
       return;
     }
-    if (!application.beverage_type) {
-      setError("Beverage Type is required to check against.");
-      return;
-    }
     if (application.is_import && !application.country_of_origin.trim()) {
       setError("Country of Origin is required when \"This is an imported product\" is checked.");
       return;
@@ -268,33 +244,6 @@ export default function CheckPage() {
             Start Over
           </button>
         )}
-      </div>
-
-      <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
-          <Sparkles className="h-4 w-4 text-accent" />
-          Try it with sample labels
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SAMPLE_LABELS.map((s, i) => (
-            <button
-              key={s.fileName}
-              type="button"
-              onClick={() => loadSample(i)}
-              title={s.description}
-              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:border-accent hover:bg-surface-hover"
-            >
-              {s.fileName.replace(/\.png$/, "").replace(/-/g, " ")}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={loadSampleBatch}
-            className="rounded-full border border-dashed border-accent px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface-hover"
-          >
-            load all 6 as a batch
-          </button>
-        </div>
       </div>
 
       <div className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -382,7 +331,9 @@ export default function CheckPage() {
                 >
                   <div className="flex items-center gap-3">
                     <BatchStatusIcon item={item} />
-                    <span className="text-sm font-medium text-foreground">{item.fileName}</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {item.result ? displayName(item.result) : item.fileName}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3">
                     {item.result && <OverallStatusBadge status={item.result.overallStatus} mode={item.result.mode} size="sm" />}

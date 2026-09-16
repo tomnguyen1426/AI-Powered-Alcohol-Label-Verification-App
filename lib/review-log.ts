@@ -13,11 +13,14 @@ const MAX_ENTRIES = 200;
 
 // Persisted per-browser only (localStorage) — there's no server-side database
 // in this prototype, so it won't sync across devices or be visible to anyone
-// else who opens the app. Image previews are dropped before persisting so a
-// run of checks doesn't blow past the localStorage quota (a handful of
-// base64-encoded photos can easily exceed the ~5–10 MB most browsers allow);
-// they're still visible for the current page load, just not after a reload.
+// else who opens the app. A base64 image (data:...) is dropped before
+// persisting so a run of checks doesn't blow past the localStorage quota (a
+// handful of base64-encoded photos can easily exceed the ~5–10 MB most
+// browsers allow) — it's still visible for the current page load, just not
+// after a reload. A plain static path (e.g. a bundled sample image) is tiny
+// and kept as-is, so it survives reloads too.
 function stripImageForStorage(result: VerificationResult): VerificationResult {
+  const keepImage = result.imageDataUrl && !result.imageDataUrl.startsWith("data:");
   return {
     id: result.id,
     fileName: result.fileName,
@@ -26,6 +29,7 @@ function stripImageForStorage(result: VerificationResult): VerificationResult {
     comparisons: result.comparisons,
     overallStatus: result.overallStatus,
     processingTimeMs: result.processingTimeMs,
+    ...(keepImage ? { imageDataUrl: result.imageDataUrl } : {}),
   };
 }
 

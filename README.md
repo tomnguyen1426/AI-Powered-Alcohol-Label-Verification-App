@@ -47,10 +47,16 @@ requirements:
   glared, or low-resolution photos and to note quality issues rather than refuse — addressing
   Jenny's stretch-goal ask — instead of the current behavior of rejecting and asking for a reshoot.
 - **A Review Log to work through, not just a one-off result.** Every check (single or batch) lands
-  in a running log on its own page, where it can be marked Approved / Rejected / Flagged for
-  follow-up — the decision a human actually makes, which is separate from and can override the
-  tool's own PASS/REVIEW/FAIL read. See **What actually persists** below for exactly what that does
-  and doesn't save.
+  in a running log, and each entry opens on its own page — image, full field-by-field readout, and
+  an Approve / Flag / Reject decision that's separate from and can override the tool's own
+  PASS/REVIEW/FAIL read. Entries can be deleted individually or the whole log cleared at once. See
+  **What actually persists** below for exactly what that does and doesn't save.
+- **Beverage type is either picked or auto-detected — and it's actually checked.** The category
+  (distilled spirits / wine / beer) drives which category-specific rules would apply, so leaving it
+  to guesswork was a gap: it used to be collected on the form but never compared against anything.
+  Now Claude classifies it from the label directly, and the agent can either pick a category
+  explicitly (checked against what the label shows — catches picking the wrong category outright)
+  or leave it on "Auto-detect from label" and just see what Claude read.
 
 ## Tech stack
 
@@ -96,18 +102,25 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Sample data
 
-Six synthetic label images (no real brands) are already generated into `public/sample-labels/`,
-each with matching application data baked into [lib/sample-data.ts](lib/sample-data.ts). They cover
-the specific scenarios above: a clean pass, a harmless brand-name case difference, a strict
-warning-formatting failure, a genuine ABV mismatch, a glare-affected photo, and an import with
-country-of-origin. Use the sample buttons in the UI — one per label for the comparison path, or
-"load all 6 as a batch" for the self-check path — or regenerate/extend them with:
+Seven synthetic label images (no real brands) are generated into `public/sample-labels/` by
+[scripts/generate-sample-labels.ts](scripts/generate-sample-labels.ts) — a clean pass, a harmless
+brand-name case difference, a strict warning-formatting failure (title-case heading), a whole-warning-
+bold violation, a genuine ABV mismatch, a glare-affected photo, and an import with country-of-origin.
+Regenerate/extend them with:
 
 ```bash
 npm run gen:labels
 ```
 
 (uses `@napi-rs/canvas`, a dev-only dependency — not required at runtime).
+
+The first time the **Review Log** is opened with nothing in it, it seeds itself with two of these
+(one clean pass, one warning-formatting fail) so there's something to look at — see
+[lib/review-log-seed.ts](lib/review-log-seed.ts). This is real Claude output captured during
+testing, re-run through the same deterministic comparison logic the app uses live, not a fabricated
+result — but it's baked in rather than fetched, so seeding costs zero API calls. It only happens
+once per browser (tracked separately from the log itself), so clearing the log later doesn't bring
+the samples back.
 
 ### Build
 
@@ -121,11 +134,11 @@ npm start
 There's one upload zone. What happens next depends on how many photos land in it:
 
 1. **One photo** → the application-data form appears. Fill in what's on file (brand name,
-   class/type, ABV, net contents, producer/address, country of origin, beverage type, import flag)
-   or load a sample, then verify. The server sends the image to Claude with a strict extraction
-   schema, then runs the field-by-field comparison in [lib/compare.ts](lib/compare.ts). Each field
-   gets **Match** / **Review** / **Mismatch** / **N/A**, and the label gets an overall **Pass** /
-   **Needs Review** / **Fail**.
+   class/type, ABV, net contents, producer/address, country of origin, import flag) and either pick
+   a beverage type or leave it on "Auto-detect from label", then verify. The server sends the image
+   to Claude with a strict extraction schema, then runs the field-by-field comparison in
+   [lib/compare.ts](lib/compare.ts). Each field gets **Match** / **Review** / **Mismatch** / **N/A**,
+   and the label gets an overall **Pass** / **Needs Review** / **Fail**.
 2. **More than one photo** → the form disappears; nothing to type in. Each photo gets its own
    `/api/verify` request (the browser fires these itself, a few at a time — see **Trade-offs** for
    why that's a platform-limit thing, not a style choice) and is validated in
@@ -144,7 +157,7 @@ because this is the kind of thing worth being precise about:
 | The label image you upload | No | Sent to Claude for that one request, then discarded server-side | — | No |
 | Application data you type in | No | Only in page state (React), sent in that one request | No — clearing the form or reloading loses it | No |
 | A check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Review Log | **Yes** | No — never leaves your browser |
-| A check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
+| A check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` — unless it's a bundled static image (the two seeded examples), which is small enough to keep | Only for the seeded examples | No |
 | Your Approve/Reject/Flag decisions | **Yes** | Browser `localStorage`, alongside the log entry | **Yes** | No |
 | Anthropic API key | N/A | Server-side environment variable only | — | Never sent to the browser |
 
@@ -174,6 +187,11 @@ needs a server-side database and is explicitly not what this prototype does; see
   import.
 - **The standard Government Warning text** is hard-coded from 27 CFR 16.21 as the single source of
   truth to check against, rather than accepting it as an application field.
+- **Beverage type is Claude's best guess, classified from the class/type wording and other visual
+  cues** — it's not a database lookup or a guaranteed-correct classification, and an ambiguous or
+  unusual label could get misclassified. When the agent picks a category explicitly, that mismatch
+  would show up as a genuine **Mismatch**; when left on auto-detect, there's nothing to compare
+  against, so a misclassification just shows the wrong label silently rather than flagging anything.
 - **Self-check mode (batch) can't catch a label that's simply wrong for the product applied for.**
   Without application data to compare against, it can only confirm required fields are present and
   well-formed (warning wording, ABV/net-contents format, etc.) — it can't tell you the ABV doesn't
@@ -238,10 +256,11 @@ needs a server-side database and is explicitly not what this prototype does; see
 
 ```
 app/
-  page.tsx                Check — one photo or many, comparison or self-check
-  history/page.tsx          Review Log — every past check, with approve/reject/flag
-  api/verify/route.ts         API — branches to comparison or self-check depending on whether
-                                applicationData was sent
+  page.tsx                    Check — one photo or many, comparison or self-check
+  history/page.tsx              Review Log — list of every past check, filterable by decision
+  history/[loggedAt]/page.tsx     One entry's own page — full analysis + decision + delete
+  api/verify/route.ts               API — branches to comparison or self-check depending on
+                                      whether applicationData was sent
 lib/
   schema.ts               Zod schemas (application data + AI extraction)
   extract.ts               Claude vision call
@@ -249,10 +268,14 @@ lib/
   self-check.ts               Per-field format validation with no application data
   rate-limit.ts                 Per-IP request throttling
   review-log.ts                   localStorage read/write for the Review Log (image stripped
-                                    before saving)
-  review-log-store.ts               Reactive in-memory store over review-log.ts, shared by the
-                                      Check page (to log a result) and the Review Log page
-  sample-data.ts                      Sample label metadata
-components/                              UI components (ThemeToggle.tsx = dark mode switch)
-scripts/generate-sample-labels.ts           Synthetic label image generator
+                                    before saving, unless it's a small bundled path)
+  review-log-store.ts               Reactive in-memory store over review-log.ts — log/delete/
+                                      decide/clear, shared by the Check page and Review Log pages
+  review-log-seed.ts                  The two pre-computed examples seeded on first open
+  sample-data.ts                        Sample label metadata (dev/reference — regenerate seed
+                                          data from this, nothing at runtime imports it directly)
+components/                                UI components (ThemeToggle.tsx = dark mode switch,
+                                             ResultPanel.tsx exports `displayName` — brand name
+                                             over filename, used everywhere a check is listed)
+scripts/generate-sample-labels.ts             Synthetic label image generator
 ```

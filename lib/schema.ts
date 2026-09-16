@@ -13,7 +13,9 @@ export const ApplicationDataSchema = z
   .object({
     brand_name: z.string().min(1, "Brand name is required"),
     class_type: z.string().optional().default(""),
-    beverage_type: z.enum(BEVERAGE_TYPES),
+    // null = "auto-detect from label" — Claude classifies it instead of the
+    // agent picking one.
+    beverage_type: z.enum(BEVERAGE_TYPES).nullable(),
     alcohol_content_percent: z.coerce.number().min(0).max(100).nullable(),
     net_contents: z.string().optional().default(""),
     producer_name_address: z.string().optional().default(""),
@@ -30,6 +32,11 @@ export type ApplicationData = z.infer<typeof ApplicationDataSchema>;
 export const LabelExtractionSchema = z.object({
   brand_name: z.string().nullable(),
   class_type: z.string().nullable(),
+  beverage_type: z
+    .enum(BEVERAGE_TYPES)
+    .describe(
+      "Best-guess beverage category based on the class/type designation and any other cues on the label (e.g. 'Bourbon Whiskey' -> distilled_spirits, 'Chardonnay' -> wine, 'India Pale Ale' -> beer). Always give your best guess even if not stated explicitly.",
+    ),
   alcohol_content_text: z
     .string()
     .nullable()

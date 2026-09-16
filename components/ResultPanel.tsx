@@ -16,6 +16,10 @@ const summaryCopy = {
   },
 } as const;
 
+export function displayName(result: VerificationResult): string {
+  return result.extraction.brand_name?.trim() || result.fileName;
+}
+
 export default function ResultPanel({ result }: { result: VerificationResult }) {
   const isComparison = result.mode === "comparison";
 
@@ -23,7 +27,8 @@ export default function ResultPanel({ result }: { result: VerificationResult }) 
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-surface px-5 py-4">
         <div>
-          <p className="text-sm text-muted">{result.fileName}</p>
+          <p className="text-sm font-semibold text-foreground">{displayName(result)}</p>
+          <p className="text-xs text-muted">{result.fileName}</p>
           <div className="mt-1">
             <OverallStatusBadge status={result.overallStatus} mode={result.mode} size="lg" />
           </div>

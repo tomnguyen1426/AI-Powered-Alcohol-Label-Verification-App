@@ -7,6 +7,12 @@ export const STANDARD_GOVERNMENT_WARNING =
 export const BEVERAGE_TYPES = ["distilled_spirits", "wine", "beer"] as const;
 export type BeverageType = (typeof BEVERAGE_TYPES)[number];
 
+export const BEVERAGE_TYPE_LABELS: Record<BeverageType, string> = {
+  distilled_spirits: "Distilled Spirits",
+  wine: "Wine",
+  beer: "Beer / Malt Beverage",
+};
+
 // TTB allows small rounding tolerance on stated alcohol content vs. actual/labeled
 // value depending on beverage type. We use a conservative flat tolerance for the
 // prototype rather than modeling the full per-category regulatory tolerance table.

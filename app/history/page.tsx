@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Check, X, Flag, Trash2, Inbox, ArrowRight } from "lucide-react";
+import { ChevronRight, Trash2, Inbox, ArrowRight } from "lucide-react";
 import clsx from "clsx";
-import ResultPanel from "@/components/ResultPanel";
+import { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
-import { useReviewLog, setDecision, clearReviewLog } from "@/lib/review-log-store";
+import { useReviewLog, deleteEntry, clearReviewLog } from "@/lib/review-log-store";
 import type { ReviewDecision } from "@/lib/review-log";
 
 const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string }> = {
@@ -20,7 +20,6 @@ type FilterValue = "all" | ReviewDecision;
 
 export default function HistoryPage() {
   const entries = useReviewLog();
-  const [expanded, setExpanded] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
 
   const counts = useMemo(() => {
@@ -61,12 +60,13 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Review Log</h1>
           <p className="mt-1 text-sm text-muted">
-            Every check you&apos;ve run on this device, with your approve/reject/flag call on each.
+            Every check you&apos;ve run on this device. Open one to see the full analysis and make a
+            call.
           </p>
         </div>
         <button
@@ -83,8 +83,7 @@ export default function HistoryPage() {
 
       <p className="mb-6 rounded-lg bg-surface px-3 py-2 text-xs text-muted">
         Saved in this browser only — not visible to anyone else, not synced anywhere, and gone if
-        you clear browser data. Label photos stay visible until you reload the page; after that
-        only the text readout is kept.
+        you clear browser data.
       </p>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -115,107 +114,39 @@ export default function HistoryPage() {
 
       <div className="space-y-2">
         {visible.map((entry) => (
-          <div key={entry.loggedAt} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <button
-                type="button"
-                onClick={() => setExpanded(expanded === entry.loggedAt ? null : entry.loggedAt)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
-              >
-                <span className="truncate text-sm font-medium text-foreground">{entry.result.fileName}</span>
-                <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
-                <span className="hidden text-xs text-muted sm:inline">
-                  {new Date(entry.loggedAt).toLocaleString([], {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </button>
-
-              <div className="flex items-center gap-3">
-                <DecisionControl decision={entry.decision} loggedAt={entry.loggedAt} />
-                <button
-                  type="button"
-                  onClick={() => setExpanded(expanded === entry.loggedAt ? null : entry.loggedAt)}
-                  className="rounded-md p-1.5 text-muted hover:bg-surface"
-                  aria-label="Toggle details"
-                >
-                  {expanded === entry.loggedAt ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            {expanded === entry.loggedAt && (
-              <div className="border-t border-border p-3">
-                <ResultPanel result={entry.result} />
-              </div>
-            )}
+          <div key={entry.loggedAt} className="flex items-center gap-2 rounded-xl border border-border bg-card shadow-sm">
+            <Link
+              href={`/history/${entry.loggedAt}`}
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5"
+            >
+              <span className={clsx("h-2 w-2 shrink-0 rounded-full", decisionMeta[entry.decision].dotClasses)} />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                {displayName(entry.result)}
+              </span>
+              <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
+              <span className="hidden text-xs text-muted sm:inline">
+                {new Date(entry.loggedAt).toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Delete "${displayName(entry.result)}" from the review log?`)) deleteEntry(entry.loggedAt);
+              }}
+              aria-label={`Delete ${displayName(entry.result)}`}
+              className="mr-3 shrink-0 rounded-md p-1.5 text-muted hover:bg-surface hover:text-rose-600 dark:hover:text-rose-400"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         ))}
       </div>
     </div>
-  );
-}
-
-function DecisionControl({ decision, loggedAt }: { decision: ReviewDecision; loggedAt: number }) {
-  return (
-    <div className="flex items-center overflow-hidden rounded-lg border border-border">
-      <DecisionOption
-        active={decision === "approved"}
-        onClick={() => setDecision(loggedAt, "approved")}
-        label="Approve"
-        Icon={Check}
-        activeClasses="bg-emerald-600 text-white"
-      />
-      <DecisionOption
-        active={decision === "flagged"}
-        onClick={() => setDecision(loggedAt, "flagged")}
-        label="Flag"
-        Icon={Flag}
-        activeClasses="bg-amber-600 text-white"
-        border
-      />
-      <DecisionOption
-        active={decision === "rejected"}
-        onClick={() => setDecision(loggedAt, "rejected")}
-        label="Reject"
-        Icon={X}
-        activeClasses="bg-rose-600 text-white"
-        border
-      />
-    </div>
-  );
-}
-
-function DecisionOption({
-  active,
-  onClick,
-  label,
-  Icon,
-  activeClasses,
-  border,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  Icon: typeof Check;
-  activeClasses: string;
-  border?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={active ? `${label} — click to clear` : label}
-      className={clsx(
-        "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors",
-        border && "border-l border-border",
-        active ? activeClasses : "text-muted hover:bg-surface hover:text-foreground",
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline">{label}</span>
-    </button>
   );
 }

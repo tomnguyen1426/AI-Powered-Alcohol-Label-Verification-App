@@ -1,4 +1,4 @@
-import { STANDARD_GOVERNMENT_WARNING } from "./constants";
+import { BEVERAGE_TYPE_LABELS, STANDARD_GOVERNMENT_WARNING } from "./constants";
 import type { FieldComparison, LabelExtraction } from "./schema";
 
 function normalizeWhitespace(value: string): string {
@@ -103,6 +103,14 @@ function warningSelfCheck(extraction: LabelExtraction): FieldComparison {
 export function selfCheckLabel(extraction: LabelExtraction): FieldComparison[] {
   const checks: FieldComparison[] = [
     presenceCheck("brand_name", "Brand Name", extraction.brand_name),
+    {
+      field: "beverage_type",
+      label: "Beverage Type",
+      applicationValue: null,
+      labelValue: BEVERAGE_TYPE_LABELS[extraction.beverage_type],
+      status: "match",
+      note: "Auto-detected from label",
+    },
     presenceCheck("class_type", "Class/Type Designation", extraction.class_type),
     abvSelfCheck(extraction),
     netContentsSelfCheck(extraction),
