@@ -3,12 +3,15 @@ import { BEVERAGE_TYPES } from "./constants";
 
 // What the compliance agent enters/pulls from the COLA application form —
 // the "source of truth" the label artwork is checked against.
+// Nothing here is marked required at the form level — an agent can submit with
+// whatever they've got. A field left blank simply shows up as a mismatch/gap
+// in the comparison instead of blocking submission outright.
 export const ApplicationDataSchema = z.object({
-  brand_name: z.string().min(1, "Brand name is required"),
-  class_type: z.string().min(1, "Class/type designation is required"),
+  brand_name: z.string().optional().default(""),
+  class_type: z.string().optional().default(""),
   beverage_type: z.enum(BEVERAGE_TYPES),
   alcohol_content_percent: z.coerce.number().min(0).max(100).nullable(),
-  net_contents: z.string().min(1, "Net contents is required"),
+  net_contents: z.string().optional().default(""),
   producer_name_address: z.string().optional().default(""),
   country_of_origin: z.string().optional().default(""),
   is_import: z.coerce.boolean().default(false),

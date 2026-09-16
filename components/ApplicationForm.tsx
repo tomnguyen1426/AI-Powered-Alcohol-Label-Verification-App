@@ -14,21 +14,10 @@ interface ApplicationFormProps {
   onChange: (value: ApplicationData) => void;
 }
 
-function Field({
-  label,
-  children,
-  required,
-}: {
-  label: string;
-  children: React.ReactNode;
-  required?: boolean;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-foreground">
-        {label}
-        {required && <span className="text-rose-600 dark:text-rose-400"> *</span>}
-      </span>
+      <span className="mb-1 block text-sm font-medium text-foreground">{label}</span>
       {children}
     </label>
   );
@@ -43,7 +32,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Brand Name" required>
+      <Field label="Brand Name">
         <input
           className={inputClasses}
           value={value.brand_name}
@@ -52,7 +41,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         />
       </Field>
 
-      <Field label="Beverage Type" required>
+      <Field label="Beverage Type">
         <select
           className={inputClasses}
           value={value.beverage_type}
@@ -66,7 +55,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         </select>
       </Field>
 
-      <Field label="Class/Type Designation" required>
+      <Field label="Class/Type Designation">
         <input
           className={inputClasses}
           value={value.class_type}
@@ -88,7 +77,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         />
       </Field>
 
-      <Field label="Net Contents" required>
+      <Field label="Net Contents">
         <input
           className={inputClasses}
           value={value.net_contents}
