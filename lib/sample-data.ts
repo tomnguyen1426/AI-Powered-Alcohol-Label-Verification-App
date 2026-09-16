@@ -89,6 +89,22 @@ export const SAMPLE_LABELS: SampleLabel[] = [
     },
   },
   {
+    fileName: "cedar-creek-whiskey-warning-allbold.png",
+    imageUrl: "/sample-labels/cedar-creek-whiskey-warning-allbold.png",
+    description:
+      "The whole warning statement is bold, not just the heading — 27 CFR 16.21 only permits the 'GOVERNMENT WARNING:' heading itself to be bold.",
+    applicationData: {
+      brand_name: "CEDAR CREEK RESERVE",
+      class_type: "Straight Rye Whiskey",
+      beverage_type: "distilled_spirits",
+      alcohol_content_percent: 46,
+      net_contents: "750 mL",
+      producer_name_address: "Cedar Creek Distilling Co., Louisville, KY",
+      country_of_origin: "",
+      is_import: false,
+    },
+  },
+  {
     fileName: "castaway-import-rum.png",
     imageUrl: "/sample-labels/castaway-import-rum.png",
     description: "Imported product — country of origin is required and present.",

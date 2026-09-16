@@ -30,6 +30,7 @@ interface LabelSpec {
   country?: string;
   warningHeading: string; // rendered heading text
   warningHeadingBold: boolean;
+  warningBodyBold?: boolean; // violation: only the heading may be bold per 27 CFR 16.21
   warningBody: string; // full warning text including heading, as rendered
   accent: string;
   paper: string;
@@ -138,7 +139,7 @@ function drawLabel(spec: LabelSpec) {
   ctx.fillText(spec.warningHeading, textX, wy);
   wy += 26;
 
-  ctx.font = "16px Arial";
+  ctx.font = spec.warningBodyBold ? "bold 16px Arial" : "16px Arial";
   const bodyOnly = spec.warningBody.replace(spec.warningHeading, "").trim();
   for (const line of wrapText(ctx, bodyOnly, textMaxWidth)) {
     ctx.fillText(line, textX, wy);
@@ -226,6 +227,20 @@ const labels: LabelSpec[] = [
     accent: "#264d1f",
     paper: "#f5f2e8",
     noise: "glare",
+  },
+  {
+    fileName: "cedar-creek-whiskey-warning-allbold.png",
+    brand: "CEDAR CREEK RESERVE",
+    classType: "Straight Rye Whiskey",
+    abvText: "46% Alc./Vol. (92 Proof)",
+    netContents: "750 mL",
+    producer: "Cedar Creek Distilling Co., Louisville, KY",
+    warningHeading: "GOVERNMENT WARNING:",
+    warningHeadingBold: true,
+    warningBodyBold: true,
+    warningBody: STANDARD_WARNING,
+    accent: "#4a2e1f",
+    paper: "#f6f0e4",
   },
   {
     fileName: "castaway-import-rum.png",

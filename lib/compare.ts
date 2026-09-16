@@ -240,14 +240,16 @@ function compareWarning(extraction: LabelExtraction): FieldComparison {
   // Word-for-word required — case-sensitive, only whitespace is normalized.
   const exact = normalizeWhitespace(labelValue) === normalizeWhitespace(STANDARD_GOVERNMENT_WARNING);
   const headingOk = extraction.warning_heading_all_caps_bold;
+  const bodyOk = !extraction.warning_body_is_bold;
 
-  if (exact && headingOk) {
+  if (exact && headingOk && bodyOk) {
     return { field, label, applicationValue: STANDARD_GOVERNMENT_WARNING, labelValue, status: "match" };
   }
 
   const notes: string[] = [];
   if (!exact) notes.push("Wording does not match the required statement exactly");
   if (!headingOk) notes.push("'GOVERNMENT WARNING:' heading must be all-caps and bold");
+  if (!bodyOk) notes.push("Only the heading may be bold — the rest of the statement must not be");
 
   return {
     field,

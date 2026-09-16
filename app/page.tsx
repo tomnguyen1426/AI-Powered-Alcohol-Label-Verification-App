@@ -209,6 +209,14 @@ export default function CheckPage() {
       setError("Brand Name is required to check against.");
       return;
     }
+    if (!application.beverage_type) {
+      setError("Beverage Type is required to check against.");
+      return;
+    }
+    if (application.is_import && !application.country_of_origin.trim()) {
+      setError("Country of Origin is required when \"This is an imported product\" is checked.");
+      return;
+    }
     handleVerifySingle();
   }
 

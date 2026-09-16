@@ -106,7 +106,7 @@ export default function ApplicationForm({ value, onChange }: ApplicationFormProp
         />
       </Field>
 
-      <Field label="Country of Origin">
+      <Field label="Country of Origin" required={value.is_import}>
         <input
           className={inputClasses}
           value={value.country_of_origin}

@@ -23,9 +23,14 @@ requirements:
   passed. The comparison logic lives in one place — [lib/compare.ts](lib/compare.ts) — so the
   matching rules are auditable independent of the AI extraction step.
 - **Zero tolerance where it matters.** Jenny's point about the Government Warning statement is the
-  one field that is *not* fuzzy-matched: it must be word-for-word correct and the "GOVERNMENT
-  WARNING:" heading must be all-caps and bold, per 27 CFR 16.21. Any deviation is a hard
-  **Mismatch**.
+  one field that is *not* fuzzy-matched, checked against 27 CFR 16.21 and TTB's published guidance
+  directly: the wording must be word-for-word correct, the "GOVERNMENT WARNING:" heading must be
+  all-caps and bold, and — easy to miss — the rest of the statement must specifically **not** be
+  bold (only the heading is allowed to be). Any deviation on any of the three is a hard
+  **Mismatch**. What this still can't check from a photo: the regulation's exact type-size
+  (1–3 mm depending on container size) and max-characters-per-inch rules, or general legibility
+  against the background — those need a physical reference in the image this app doesn't have, so
+  they're an honest gap, not something faked. See **Trade-offs & limitations**.
 - **Built for Dave and Sarah's mother, not just Jenny.** One upload zone, one form, one button, a
   plain-language PASS / NEEDS REVIEW / FAIL banner before any detail table. No settings screen, no
   jargon, no marketing landing page to click through — the tool itself is the front page. The one
@@ -220,6 +225,14 @@ needs a server-side database and is explicitly not what this prototype does; see
 - **Single warning statement text.** Some bottle sizes/categories have alternate or abbreviated
   statutory language (e.g. very small containers); this prototype checks against the one standard
   statement rather than the full category-specific rule set.
+- **Government Warning checks that stop at wording and bolding.** 27 CFR 16.21 and TTB's guidance
+  also specify a minimum type size (1 mm/2 mm/3 mm depending on container size), a max
+  characters-per-inch at each size, that the statement must read as one continuous paragraph, that
+  it must be set apart from other label copy, and that it must be legible against its background.
+  None of that is checked — reliably measuring print size in millimeters or judging legibility from
+  a phone photo with no physical reference/ruler in frame isn't something this app attempts, rather
+  than pretending to and guessing. It also doesn't apply the 0.5% ABV threshold below which the
+  warning isn't legally required at all — the prototype always expects it.
 
 ## Project structure
 

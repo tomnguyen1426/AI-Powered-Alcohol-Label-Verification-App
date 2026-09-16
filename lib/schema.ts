@@ -3,20 +3,27 @@ import { BEVERAGE_TYPES } from "./constants";
 
 // What the compliance agent enters/pulls from the COLA application form —
 // the "source of truth" the label artwork is checked against.
-// Brand name and beverage type are the only fields actually required to
-// submit a check. Everything else, including class/type designation, can be
-// left blank — a gap there just shows up as a mismatch in the comparison
-// instead of blocking submission.
-export const ApplicationDataSchema = z.object({
-  brand_name: z.string().min(1, "Brand name is required"),
-  class_type: z.string().optional().default(""),
-  beverage_type: z.enum(BEVERAGE_TYPES),
-  alcohol_content_percent: z.coerce.number().min(0).max(100).nullable(),
-  net_contents: z.string().optional().default(""),
-  producer_name_address: z.string().optional().default(""),
-  country_of_origin: z.string().optional().default(""),
-  is_import: z.coerce.boolean().default(false),
-});
+// Brand name and beverage type are the only fields always required to submit
+// a check; country of origin becomes required too when is_import is set.
+// Everything else, including class/type designation, can be left blank — a
+// gap there just shows up as a mismatch in the comparison instead of
+// blocking submission. Enforced here (not just in the form) since this is
+// the actual authority — the UI check is just for an immediate error message.
+export const ApplicationDataSchema = z
+  .object({
+    brand_name: z.string().min(1, "Brand name is required"),
+    class_type: z.string().optional().default(""),
+    beverage_type: z.enum(BEVERAGE_TYPES),
+    alcohol_content_percent: z.coerce.number().min(0).max(100).nullable(),
+    net_contents: z.string().optional().default(""),
+    producer_name_address: z.string().optional().default(""),
+    country_of_origin: z.string().optional().default(""),
+    is_import: z.coerce.boolean().default(false),
+  })
+  .refine((data) => !data.is_import || data.country_of_origin.trim().length > 0, {
+    message: "Country of origin is required for imported products",
+    path: ["country_of_origin"],
+  });
 export type ApplicationData = z.infer<typeof ApplicationDataSchema>;
 
 // What we ask Claude to read off the label artwork itself.
@@ -42,6 +49,11 @@ export const LabelExtractionSchema = z.object({
   warning_heading_all_caps_bold: z
     .boolean()
     .describe("True only if the words 'GOVERNMENT WARNING:' appear in all capital letters AND in bold/emphasized type"),
+  warning_body_is_bold: z
+    .boolean()
+    .describe(
+      "True if any part of the warning text AFTER the 'GOVERNMENT WARNING:' heading is also bold/emphasized. Per 27 CFR 16.21, only the heading may be bold — the rest of the statement must NOT be bold. This should be true only when the body itself is bold, not just the heading.",
+    ),
   image_quality_issues: z
     .array(z.string())
     .describe("Any issues that limited reading the label, e.g. 'glare across lower third', 'shot at an angle', 'low resolution'. Empty array if none."),
