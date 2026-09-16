@@ -114,12 +114,16 @@ npm run gen:labels
 
 (uses `@napi-rs/canvas`, a dev-only dependency — not required at runtime).
 
-The first time the **Review Log** is opened with nothing in it, it seeds itself with two of these
-(one clean pass, one warning-formatting fail) so there's something to look at — see
-[lib/review-log-seed.ts](lib/review-log-seed.ts). This is real Claude output captured during
-testing, re-run through the same deterministic comparison logic the app uses live, not a fabricated
-result — but it's baked in rather than fetched, so seeding costs zero API calls. It only happens
-once per browser (tracked separately from the log itself), so clearing the log later doesn't bring
+The first time the **Review Log** is opened with nothing in it, it seeds itself with four of these
+— one for each decision state (an Approved pass, a Rejected fail, a Flagged "needs review", and a
+still-Pending fail) — so there's something to look at right away, in every filter. See
+[lib/review-log-seed.ts](lib/review-log-seed.ts): the first two are real Claude output captured
+during testing; the other two are constructed directly from what's actually printed on their label
+images (this app generates its own sample labels, so that's known ground truth), specifically to
+land in the Review and Fail bands. All four run through the same deterministic comparison logic the
+app uses live — nothing fabricated, just baked in rather than fetched, so seeding costs zero API
+calls. It only happens once per browser (tracked separately from the log itself), so clearing the
+log later doesn't bring
 the samples back.
 
 ### Build

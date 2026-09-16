@@ -21,6 +21,14 @@ export default function ReviewLogEntryPage() {
   const loggedAt = Number(params.loggedAt);
   const entry = useReviewLogEntry(loggedAt);
 
+  function handleDecision(decision: ReviewDecision) {
+    if (!entry) return;
+    const next = entry.decision === decision ? "pending" : decision;
+    setDecision(entry.loggedAt, decision);
+    const params = new URLSearchParams({ decided: next, name: displayName(entry.result) });
+    router.push(`/history?${params.toString()}`);
+  }
+
   if (!entry) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-24 text-center sm:px-6">
@@ -70,21 +78,21 @@ export default function ReviewLogEntryPage() {
         <div className="flex flex-wrap items-center gap-3">
           <DecisionButton
             active={entry.decision === "approved"}
-            onClick={() => setDecision(entry.loggedAt, "approved")}
+            onClick={() => handleDecision("approved")}
             label="Approve"
             Icon={Check}
             activeClasses="bg-emerald-600 text-white border-emerald-600"
           />
           <DecisionButton
             active={entry.decision === "flagged"}
-            onClick={() => setDecision(entry.loggedAt, "flagged")}
+            onClick={() => handleDecision("flagged")}
             label="Flag for follow-up"
             Icon={Flag}
             activeClasses="bg-amber-600 text-white border-amber-600"
           />
           <DecisionButton
             active={entry.decision === "rejected"}
-            onClick={() => setDecision(entry.loggedAt, "rejected")}
+            onClick={() => handleDecision("rejected")}
             label="Reject"
             Icon={X}
             activeClasses="bg-rose-600 text-white border-rose-600"

@@ -1,16 +1,20 @@
 import type { ReviewLogEntry } from "./review-log";
 
-// A couple of pre-computed examples shown the first time someone opens the
-// Review Log with nothing in it yet, so it's not just an empty page. These
-// are real Claude extraction output for the bundled sample labels (captured
-// during testing, then run through the same deterministic comparison logic
-// the app uses live) — not fabricated, but not a live API call either, so
-// seeding costs nothing. loggedAt is set in the past so they read as
-// pre-existing rather than "just now".
+// Pre-computed examples shown the first time someone opens the Review Log
+// with nothing in it yet, so it's not just an empty page — one for each
+// decision state (Approved / Rejected / Flagged / Pending) and a spread of
+// outcomes (Pass / Needs Review / Fail). The first two are real Claude
+// extraction output for the bundled sample labels, captured during testing;
+// the other two are constructed directly from what's actually printed on
+// their label images (this project generates its own sample labels, so
+// that's known ground truth) to land deliberately in the Review and Fail
+// bands. All four are run through the same deterministic comparison logic
+// the app uses live — no live API call, so seeding costs nothing. loggedAt
+// is set in the past so they read as pre-existing rather than "just now".
 export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
   {
-    loggedAt: Date.now() - 2 * 60 * 60 * 1000,
-    decision: "pending",
+    loggedAt: Date.now() - 4 * 60 * 60 * 1000,
+    decision: "approved",
     result: {
       id: "seed-old-tom-bourbon-clean",
       fileName: "old-tom-bourbon-clean.png",
@@ -57,8 +61,8 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
     },
   },
   {
-    loggedAt: Date.now() - 60 * 60 * 1000,
-    decision: "pending",
+    loggedAt: Date.now() - 3 * 60 * 60 * 1000,
+    decision: "rejected",
     result: {
       id: "seed-harbor-vodka-warning-titlecase",
       fileName: "harbor-vodka-warning-titlecase.png",
@@ -103,6 +107,116 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
       overallStatus: "fail",
       processingTimeMs: 4800,
       imageDataUrl: "/sample-labels/harbor-vodka-warning-titlecase.png",
+    },
+  },
+  {
+    loggedAt: Date.now() - 90 * 60 * 1000,
+    decision: "flagged",
+    result: {
+      id: "seed-castaway-import-rum",
+      fileName: "castaway-import-rum.png",
+      mode: "comparison",
+      extraction: {
+        brand_name: "CASTAWAY GOLD",
+        class_type: "Rum",
+        beverage_type: "distilled_spirits",
+        alcohol_content_text: "40% Alc./Vol. (80 Proof)",
+        alcohol_content_percent: 40,
+        net_contents: "750 mL",
+        producer_name_address: "Imported by Castaway Spirit Importers, Miami, FL",
+        country_of_origin: "Product of Jamaica",
+        government_warning_present: true,
+        government_warning_text:
+          "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+        warning_heading_all_caps_bold: true,
+        warning_body_is_bold: false,
+        image_quality_issues: [],
+        extraction_confidence: "high",
+        notes: null,
+      },
+      comparisons: [
+        { field: "brand_name", label: "Brand Name", applicationValue: "CASTAWAY GOLD", labelValue: "CASTAWAY GOLD", status: "match" },
+        { field: "beverage_type", label: "Beverage Type", applicationValue: "Distilled Spirits", labelValue: "Distilled Spirits", status: "match" },
+        { field: "class_type", label: "Class/Type Designation", applicationValue: "Rum", labelValue: "Rum", status: "match" },
+        { field: "alcohol_content_percent", label: "Alcohol Content (ABV)", applicationValue: "40%", labelValue: "40% Alc./Vol. (80 Proof)", status: "match" },
+        { field: "net_contents", label: "Net Contents", applicationValue: "750 mL", labelValue: "750 mL", status: "match" },
+        {
+          field: "producer_name_address",
+          label: "Name & Address of Producer/Bottler",
+          applicationValue: "Imported by Castaway Spirits Importers, Miami, FL",
+          labelValue: "Imported by Castaway Spirit Importers, Miami, FL",
+          status: "review",
+          note: "Close but not identical — verify by eye",
+        },
+        { field: "country_of_origin", label: "Country of Origin", applicationValue: "Product of Jamaica", labelValue: "Product of Jamaica", status: "match" },
+        {
+          field: "government_warning",
+          label: "Government Warning Statement",
+          applicationValue:
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+          labelValue:
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+          status: "match",
+        },
+      ],
+      overallStatus: "review",
+      processingTimeMs: 4500,
+      imageDataUrl: "/sample-labels/castaway-import-rum.png",
+    },
+  },
+  {
+    loggedAt: Date.now() - 20 * 60 * 1000,
+    decision: "pending",
+    result: {
+      id: "seed-summit-rum-abv-mismatch",
+      fileName: "summit-rum-abv-mismatch.png",
+      mode: "comparison",
+      extraction: {
+        brand_name: "SUMMIT RIDGE RUM",
+        class_type: "Gold Rum",
+        beverage_type: "distilled_spirits",
+        alcohol_content_text: "35% Alc./Vol. (70 Proof)",
+        alcohol_content_percent: 35,
+        net_contents: "750 mL",
+        producer_name_address: "Summit Ridge Distillers, Denver, CO",
+        country_of_origin: null,
+        government_warning_present: true,
+        government_warning_text:
+          "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+        warning_heading_all_caps_bold: true,
+        warning_body_is_bold: false,
+        image_quality_issues: [],
+        extraction_confidence: "high",
+        notes: null,
+      },
+      comparisons: [
+        { field: "brand_name", label: "Brand Name", applicationValue: "SUMMIT RIDGE RUM", labelValue: "SUMMIT RIDGE RUM", status: "match" },
+        { field: "beverage_type", label: "Beverage Type", applicationValue: "Distilled Spirits", labelValue: "Distilled Spirits", status: "match" },
+        { field: "class_type", label: "Class/Type Designation", applicationValue: "Gold Rum", labelValue: "Gold Rum", status: "match" },
+        {
+          field: "alcohol_content_percent",
+          label: "Alcohol Content (ABV)",
+          applicationValue: "40%",
+          labelValue: "35% Alc./Vol. (70 Proof)",
+          status: "mismatch",
+          note: "Differs by 5.00 percentage points",
+        },
+        { field: "net_contents", label: "Net Contents", applicationValue: "750 mL", labelValue: "750 mL", status: "match" },
+        { field: "producer_name_address", label: "Name & Address of Producer/Bottler", applicationValue: "Summit Ridge Distillers, Denver, CO", labelValue: "Summit Ridge Distillers, Denver, CO", status: "match" },
+        { field: "country_of_origin", label: "Country of Origin", applicationValue: null, labelValue: null, status: "not_applicable" },
+        {
+          field: "government_warning",
+          label: "Government Warning Statement",
+          applicationValue:
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+          labelValue:
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+          status: "match",
+        },
+      ],
+      overallStatus: "fail",
+      processingTimeMs: 4100,
+      imageDataUrl: "/sample-labels/summit-rum-abv-mismatch.png",
     },
   },
 ];
