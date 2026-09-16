@@ -66,7 +66,16 @@ function compareText(
   const labelValue = labelValueRaw?.trim() || null;
 
   if (!applicationValue && !required) {
-    return { field, label, applicationValue, labelValue, status: "not_applicable" };
+    // Nothing was provided to check this field against — there's nothing to
+    // flag as wrong, so show what the label itself says rather than a blank.
+    return {
+      field,
+      label,
+      applicationValue: labelValue,
+      labelValue,
+      status: "not_applicable",
+      note: labelValue ? "No expected value provided — showing what's on the label" : undefined,
+    };
   }
   if (!labelValue) {
     return {
@@ -127,12 +136,23 @@ function parseNetContentsToMl(raw: string): number | null {
 function compareNetContents(
   applicationValueRaw: string | null | undefined,
   labelValueRaw: string | null | undefined,
+  required = true,
 ): FieldComparison {
   const field = "net_contents";
   const label = "Net Contents";
   const applicationValue = applicationValueRaw?.trim() || null;
   const labelValue = labelValueRaw?.trim() || null;
 
+  if (!applicationValue && !required) {
+    return {
+      field,
+      label,
+      applicationValue: labelValue,
+      labelValue,
+      status: "not_applicable",
+      note: labelValue ? "No expected value provided — showing what's on the label" : undefined,
+    };
+  }
   if (!labelValue) {
     return { field, label, applicationValue, labelValue, status: "mismatch", note: "Not found on label" };
   }
@@ -245,9 +265,15 @@ export function compareLabelToApplication(
 ): FieldComparison[] {
   const comparisons: FieldComparison[] = [
     compareText("brand_name", "Brand Name", application.brand_name, extraction.brand_name),
-    compareText("class_type", "Class/Type Designation", application.class_type, extraction.class_type),
+    compareText(
+      "class_type",
+      "Class/Type Designation",
+      application.class_type,
+      extraction.class_type,
+      false,
+    ),
     compareAbv(application.alcohol_content_percent, extraction),
-    compareNetContents(application.net_contents, extraction.net_contents),
+    compareNetContents(application.net_contents, extraction.net_contents, false),
     compareText(
       "producer_name_address",
       "Name & Address of Producer/Bottler",
