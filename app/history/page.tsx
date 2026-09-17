@@ -10,11 +10,23 @@ import { OverallStatusBadge } from "@/components/StatusBadge";
 import { useReviewLog, deleteEntry, clearReviewLog } from "@/lib/review-log-store";
 import type { ReviewDecision } from "@/lib/review-log";
 
-const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string }> = {
-  pending: { label: "Pending", dotClasses: "bg-muted" },
-  approved: { label: "Approved", dotClasses: "bg-emerald-500" },
-  rejected: { label: "Rejected", dotClasses: "bg-rose-500" },
-  flagged: { label: "Flagged", dotClasses: "bg-amber-500" },
+const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string; badgeClasses: string }> = {
+  pending: { label: "Pending", dotClasses: "bg-muted", badgeClasses: "text-muted bg-surface" },
+  approved: {
+    label: "Approved",
+    dotClasses: "bg-emerald-500",
+    badgeClasses: "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40",
+  },
+  rejected: {
+    label: "Rejected",
+    dotClasses: "bg-rose-500",
+    badgeClasses: "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40",
+  },
+  flagged: {
+    label: "Flagged",
+    dotClasses: "bg-amber-500",
+    badgeClasses: "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/40",
+  },
 };
 
 const toastMeta: Record<ReviewDecision, { verb: string; Icon: typeof CheckCircle2; classes: string }> = {
@@ -167,11 +179,18 @@ export default function HistoryPage() {
               href={`/history/${entry.loggedAt}`}
               className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5"
             >
-              <span className={clsx("h-2 w-2 shrink-0 rounded-full", decisionMeta[entry.decision].dotClasses)} />
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {displayName(entry.result)}
               </span>
               <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
+              <span
+                className={clsx(
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  decisionMeta[entry.decision].badgeClasses,
+                )}
+              >
+                {decisionMeta[entry.decision].label}
+              </span>
               <span className="hidden text-xs text-muted sm:inline">
                 {new Date(entry.loggedAt).toLocaleString([], {
                   month: "short",
