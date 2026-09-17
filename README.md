@@ -381,6 +381,11 @@ Nothing in this app rises to the level of regulated PII (no names tied to indivi
   unusual label could get misclassified. When the agent picks a category explicitly, that mismatch
   would show up as a genuine **Mismatch**; when left on auto-detect, there's nothing to compare
   against, so a misclassification just shows the wrong label silently rather than flagging anything.
+- **The ABV-exemption rule is generic, demoed with one example.** `alcohol_content_percent: null`
+  is treated as an exempt category rather than a missing/mismatched field for any beverage type — it
+  isn't beer-specific — but the sample set only actually ships one label exercising it (the beer,
+  since some malt beverages commonly omit ABV); a wine label under the ABV threshold TTB also
+  exempts would hit the same code path but isn't separately demonstrated here.
 - **Self-check mode (batch) can't catch a label that's simply wrong for the product applied for.**
   Without application data to compare against, it can only confirm required fields are present and
   well-formed (warning wording, ABV/net-contents format, etc.) — it can't tell you the ABV doesn't
@@ -417,6 +422,13 @@ Nothing in this app rises to the level of regulated PII (no names tied to indivi
   also means each one is individually covered by the rate limiter below. The trade-off: a very
   large batch now takes proportionally longer (and can pause mid-run if it hits the rate limit)
   rather than finishing as one atomic server-side job.
+- **The 100-photo batch cap is below Janet's actual use case.** She described dumps of 200–300
+  label applications at once; this demo caps a single batch at 100
+  ([app/page.tsx](app/page.tsx)) specifically to bound one run's worst-case API cost on a
+  publicly-reachable demo key, not because the architecture can't go higher. Raising it is a
+  one-line change once the API key has a real spend cap behind it (see **Security**); a production
+  version would likely chunk a 200–300 photo drop into automatic sequential batches instead of
+  asking the agent to split it manually.
 - **Rate limiting is a soft, best-effort guard, not a hard cap.** The limiter in
   [lib/rate-limit.ts](lib/rate-limit.ts) is per-process in-memory state — on Vercel that means it's
   scoped to whichever warm serverless instance handles a given request, not shared globally, and it
