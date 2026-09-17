@@ -98,14 +98,6 @@ export function deleteEntry(loggedAt: number) {
   notify();
 }
 
-export function clearReviewLog() {
-  // Clears real entries only; the four built-in examples are unaffected.
-  realEntries = [];
-  saveReviewLog(realEntries);
-  recompute();
-  notify();
-}
-
 export function useReviewLog(): ReviewLogEntry[] {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

@@ -61,7 +61,7 @@ requirements:
   Pending entry has been cleared, since those have already been seen once and held for follow-up
   rather than left untouched. Once neither is left, it says so instead of showing a dead-end button.
   That priority means working through a stack of applications doesn't mean returning to the list
-  after every single one. Entries can be deleted individually or the whole log cleared at once. See
+  after every single one. Entries can be deleted individually, one at a time. See
   **What actually persists** below for exactly what that does and doesn't save.
 - **Nine example cases, the same for every device.** So the Review Log isn't an empty page (or a
   pile of duplicate seed data) the first time anyone opens it, nine reference cases — spread across
@@ -230,8 +230,8 @@ the real authority):
   wrote itself (e.g. *"Brand name is required"* from `ApplicationDataSchema`'s own validation
   rules), never anything sourced from an upstream system.
 
-**In the Review Log:** opening a link to an entry that's since been deleted, hidden, or cleared
-shows *"Entry not found — it may have been deleted, or the review log was cleared."* rather than a
+**In the Review Log:** opening a link to an entry that's since been deleted or hidden
+shows *"Entry not found — it may have been deleted, or hidden on this device."* rather than a
 blank or broken page.
 
 ## What actually persists
@@ -472,7 +472,7 @@ lib/
                                     stripped before saving, unless it's a small bundled path) and
                                     for the small per-device example-override list
   review-log-store.ts               Reactive in-memory store — merges the nine built-in examples
-                                      with real entries, log/delete/decide/clear, shared by the
+                                      with real entries, log/delete/decide, shared by the
                                       Check page and Review Log pages
   review-log-seed.ts                  The nine permanent example cases, across every decision
                                         state and outcome

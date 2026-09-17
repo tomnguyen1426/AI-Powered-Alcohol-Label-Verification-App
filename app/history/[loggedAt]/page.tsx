@@ -51,7 +51,7 @@ export default function ReviewLogEntryPage() {
       <div className="mx-auto max-w-2xl px-4 py-24 text-center sm:px-6">
         <h1 className="text-xl font-semibold text-foreground">Entry not found</h1>
         <p className="mt-2 text-sm text-muted">
-          It may have been deleted, or the review log was cleared.
+          It may have been deleted, or hidden on this device.
         </p>
         <Link href="/history" className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline">
           <ArrowLeft className="h-4 w-4" />

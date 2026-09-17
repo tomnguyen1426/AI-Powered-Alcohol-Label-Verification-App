@@ -6,7 +6,7 @@ import { ChevronRight, Trash2, Inbox, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
-import { useReviewLog, deleteEntry, clearReviewLog } from "@/lib/review-log-store";
+import { useReviewLog, deleteEntry } from "@/lib/review-log-store";
 import type { ReviewDecision } from "@/lib/review-log";
 
 const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string; badgeClasses: string }> = {
@@ -81,16 +81,6 @@ export default function HistoryPage() {
             call.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm("Clear the entire review log? This can't be undone.")) clearReviewLog();
-          }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface hover:text-foreground"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Clear log
-        </button>
       </div>
 
       <p className="mb-6 rounded-lg bg-surface px-3 py-2 text-xs text-muted">
