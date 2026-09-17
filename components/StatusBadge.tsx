@@ -1,10 +1,15 @@
-import { CheckCircle2, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
+import { CheckCircle2, Flag, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
 import clsx from "clsx";
 import type { CheckMode, FieldStatus, OverallStatus } from "@/lib/schema";
 
+// "Flagged" here is the AI's own read on a label -- distinct from a human's
+// Approve/Flag/Reject decision, which always wins once one has been made
+// (see the Review Log). Reusing the same word for "needs a closer look"
+// keeps the vocabulary small; the fail tier is "Failed" specifically so it
+// never collides with this one.
 const overallLabels: Record<CheckMode, Record<OverallStatus, string>> = {
-  comparison: { pass: "PASS", review: "NEEDS REVIEW", fail: "FAIL" },
-  self_check: { pass: "OK", review: "NEEDS REVIEW", fail: "FLAGGED" },
+  comparison: { pass: "PASS", review: "FLAGGED", fail: "FAILED" },
+  self_check: { pass: "OK", review: "FLAGGED", fail: "FAILED" },
 };
 
 const overallConfig: Record<OverallStatus, { classes: string; Icon: typeof CheckCircle2 }> = {
@@ -16,7 +21,7 @@ const overallConfig: Record<OverallStatus, { classes: string; Icon: typeof Check
   review: {
     classes:
       "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-400/20",
-    Icon: AlertTriangle,
+    Icon: Flag,
   },
   fail: {
     classes: "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-950/40 dark:text-rose-400 dark:ring-rose-400/20",
@@ -47,7 +52,7 @@ export function OverallStatusBadge({
 
 const fieldLabels: Record<CheckMode, Record<FieldStatus, string>> = {
   comparison: { match: "Match", review: "Review", mismatch: "Mismatch", not_applicable: "N/A" },
-  self_check: { match: "OK", review: "Review", mismatch: "Flagged", not_applicable: "N/A" },
+  self_check: { match: "OK", review: "Review", mismatch: "Failed", not_applicable: "N/A" },
 };
 
 const fieldConfig: Record<FieldStatus, { classes: string; Icon: typeof CheckCircle2 }> = {

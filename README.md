@@ -32,7 +32,7 @@ requirements:
   against the background — those need a physical reference in the image this app doesn't have, so
   they're an honest gap, not something faked. See **Trade-offs & limitations**.
 - **Built for Dave and Sarah's mother, not just Jenny.** One upload zone, one form, one button, a
-  plain-language PASS / NEEDS REVIEW / FAIL banner before any detail table. No settings screen, no
+  plain-language PASS / FLAGGED / FAILED banner before any detail table. No settings screen, no
   jargon, no marketing landing page to click through — the tool itself is the front page. The one
   setting that does exist — light/dark — is an explicit labeled switch, not an icon someone has to
   guess the meaning of.
@@ -49,12 +49,18 @@ requirements:
 - **A Review Log to work through, not just a one-off result.** Every check (single or batch) lands
   in a running log, and each entry opens on its own page — image, full field-by-field readout, and
   an Approve / Flag / Reject decision that's separate from and can override the tool's own
-  PASS/REVIEW/FAIL read. The same decision control also shows up right on the Check page as soon as
-  a result comes back, for both a single check and each item in a batch — no detour through the
-  Review Log required if you want to decide immediately. Each row shows exactly one status badge,
-  not two: the decision once a human has made one, falling back to the AI's own verdict while it's
-  still Pending — showing both at once read as duplicated and confusing (a red "FAIL" next to a red
-  "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
+  PASS/FLAGGED/FAILED read. "Flagged" is the deliberately reused word — the AI's own "needs a
+  closer look" verdict and a human's "hold this for follow-up" decision are conceptually the same
+  thing, just at different points in the process, so they share one word and one flag icon instead
+  of competing near-synonyms ("Needs Review" vs. "Flagged" read as two different states when they
+  weren't). What tells them apart is never wording: it's color/weight (amber outline badge for the
+  AI's read vs. a solid amber pill for a human's decision) and, more importantly, that only one
+  ever shows per row — see the next sentence. The same decision control also shows up right on the
+  Check page as soon as a result comes back, for both a single check and each item in a batch — no
+  detour through the Review Log required if you want to decide immediately. Each row shows exactly
+  one status badge, not two: the decision once a human has made one, falling back to the AI's own
+  verdict while it's still Pending — showing both at once read as duplicated and confusing (a red
+  "FAILED" next to a red "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
   ("Rejected 'X'") with two ways forward: back to the list, or straight on to the next application
   worth a look — "Next Application" searches forward through the log for the next **Pending** entry
   first, since those haven't been looked at at all, and only offers up a **Flagged** one once every
@@ -169,12 +175,12 @@ There's one upload zone. What happens next depends on how many photos land in it
    a beverage type or leave it on "Auto-detect from label", then verify. The server sends the image
    to Claude with a strict extraction schema, then runs the field-by-field comparison in
    [lib/compare.ts](lib/compare.ts). Each field gets **Match** / **Review** / **Mismatch** / **N/A**,
-   and the label gets an overall **Pass** / **Needs Review** / **Fail**.
+   and the label gets an overall **Pass** / **Flagged** / **Failed**.
 2. **More than one photo** → the form disappears; nothing to type in. Each photo gets its own
    `/api/verify` request (the browser fires these itself, a few at a time — see **Trade-offs** for
    why that's a platform-limit thing, not a style choice) and is validated in
    [lib/self-check.ts](lib/self-check.ts) against its own required fields instead of anything typed
-   in. Each label ends up **OK**, **Needs Review**, or **Flagged**.
+   in. Each label ends up **OK**, **Flagged**, or **Failed**.
 
 Both paths show the source image, a per-field readout, and the processing time.
 
@@ -269,99 +275,18 @@ queue — that needs a server-side database and is explicitly not what this prot
 
 ## Security
 
-### Assets & data classification
+The full write-up — asset classification, a STRIDE threat analysis (Spoofing / Tampering /
+Repudiation / Information Disclosure / Denial of Service & cost abuse / Elevation of Privilege),
+the controls actually in place, and the security-specific subset of known limitations — lives in
+**[SECURITY.md](SECURITY.md)** rather than here, specifically so it shows up under this repo's own
+**Security** tab on GitHub instead of being buried partway down a long README.
 
-What this app actually handles, and how sensitive each thing is:
-
-| Asset | Classification | Where it lives | Notes |
-|---|---|---|---|
-| Anthropic API key | Secret | Server-only env var (`.env.local` / Vercel project config) | Never sent to the client; never committed. |
-| Uploaded label photo | Transient, business-confidential | In memory for the duration of one request only | Not written to disk or a database server-side. Persisted client-side only as a small static sample path or dropped entirely — see **What actually persists**. |
-| Typed-in application data (brand, class/type, ABV, etc.) | Internal / business data | Browser memory during a check; `localStorage` afterward if the result is kept | Not secret, but it's a real applicant's filing details — not something to leak to another site or another device by accident. |
-| Extracted label text + comparison verdict | Internal / business data | `localStorage` (Review Log), same origin only | Derived from the two inputs above; same sensitivity. |
-| Review Log entries (real checks) | Internal / business data | Client-side only, this browser/device only | Never leaves the browser once created — see **What actually persists**. |
-| The nine example cases | Public / reference | Shipped in source ([lib/review-log-seed.ts](lib/review-log-seed.ts)) | Synthetic, invented data — not a real applicant, safe to be public and identical on every device. |
-| Rate-limiter counters | Minimal / operational | Server memory only, per-IP, reset on redeploy | Contains a client IP and a request count — nothing else — and only for the rate-limiting window. |
-| Source code & deployment config | Public | GitHub repo, Vercel project | Secrets (the API key) are deliberately excluded via `.env.local` + `.gitignore`, not just "not committed yet." |
-
-Nothing in this app rises to the level of regulated PII (no names tied to individuals, no payment data, no health data) — the most sensitive thing here is the Anthropic API key, which is the one asset actually treated as a secret.
-
-### Threats considered (STRIDE)
-
-- **Spoofing** — not applicable in any meaningful sense: there's no login, no session, and no identity
-  to impersonate. The one place spoofing *could* matter — a malicious client claiming to be a
-  different IP to dodge the rate limit — is a known, accepted gap; see **Denial of Service** below.
-- **Tampering** — in transit, HTTPS (via Vercel) rules out a network-level man-in-the-middle altering
-  a request or response. More importantly, the server never trusts a client-supplied verdict: every
-  PASS/REVIEW/FAIL comes from re-deriving the comparison server-side from the actual uploaded image
-  bytes and the actual submitted application data (`app/api/verify/route.ts`), so a client can't send
-  a pre-built "PASS" result and have it accepted. A user *can* edit their own `localStorage` (their
-  own Review Log, their own decisions) — but that's tampering with their own browser's own view of
-  their own data; it doesn't touch the server, doesn't affect any other device, and doesn't grant
-  anything a legitimate decision button wouldn't.
-- **Repudiation** — explicitly out of scope, not overlooked: there's no server-side audit log, so
-  there's no record of who ran which check or made which decision beyond what sits in that one
-  browser's `localStorage`. That's an acceptable gap for an internal review/demo prototype and is
-  called out again under **What a real production deployment would still need** below.
-- **Information disclosure** — the API key is the one real secret and never reaches the client (see
-  below). Error messages returned to the browser were audited as part of this: the verify route used
-  to echo `err.message` from a failed Claude API call straight back to the client, which could leak
-  internal Anthropic SDK/API diagnostic detail; it now always returns a generic message (or a
-  pre-written timeout-specific one) and logs the real error server-side only via `console.error` — see
-  **Validation & error messages**. One disclosure is real and intentional, not a bug: the label image
-  and application data are sent to Anthropic's API to run the extraction, which is the whole point of
-  the app, and is a third party the operator is trusting by design. Client-side storage is
-  origin-scoped, so no other site can read a browser's Review Log.
-- **Denial of service** — the per-IP rate limiter and the request/file/type size caps
-  ([lib/rate-limit.ts](lib/rate-limit.ts), [lib/constants.ts](lib/constants.ts)) are the front-line
-  defense against a link to this demo running up an unbounded API bill or a single oversized upload
-  tying up a request. Both are acknowledged as soft: the rate limiter is in-memory per serverless
-  instance, so it doesn't hold up strictly across Vercel's scaled-out instances, and an attacker can
-  simply rotate IPs. The real backstop for this deployment is a spend cap set directly on the
-  Anthropic API key in the Anthropic Console, which no amount of in-app logic can be bypassed around.
-- **Elevation of privilege** — not applicable: there are no privilege levels, roles, or permissions
-  anywhere in this app for anything to elevate into.
-
-### Controls in place
-
-- **The Anthropic API key never reaches the browser.** It's read from a server-side environment
-  variable ([lib/extract.ts](lib/extract.ts)) inside an API route that only runs on the server;
-  nothing in the client bundle references it, and `.env.local` is git-ignored so it never ends up
-  in the repo either. The only way to get it is to already have server access to the deployment.
-- **Every request is validated before it's trusted.** `ApplicationDataSchema` and
-  `LabelExtractionSchema` ([lib/schema.ts](lib/schema.ts)) are Zod schemas — malformed or
-  unexpected JSON from the client is rejected with a 400, not passed through. Uploaded files are
-  checked against an allowed MIME-type list and a 4 MB size cap
-  ([lib/constants.ts](lib/constants.ts)) both client-side (fast feedback) and server-side (the
-  actual authority — a client check is a courtesy, not a security boundary).
-- **Per-IP rate limiting** ([lib/rate-limit.ts](lib/rate-limit.ts)) sits in front of the only route
-  that spends API credits, specifically so a link to this demo can't be used to run up an unbounded
-  bill. It's a soft, best-effort guard, not a hard cap — see **Trade-offs & limitations** for the
-  honest limits of an in-memory limiter on serverless infrastructure, and set an actual spend cap on
-  the API key itself for a real guarantee.
-- **No authentication, by design, for this scope.** Anyone with the URL can run a check. There's no
-  login, no session, no cookie — which also means there's nothing here for CSRF or session-fixation
-  attacks to target. This is appropriate for an internal review/demo prototype and explicitly not
-  appropriate for a multi-tenant production system; see **Trade-offs & limitations**.
-- **Nothing server-side to steal.** There's no database, so there's no SQL/NoSQL injection surface
-  and no data store that could leak in a breach — every request's image and application data is
-  processed in memory and discarded once the response is sent (see **What actually persists**).
-- **No `dangerouslySetInnerHTML` of anything user-controlled.** The one place this app injects raw
-  HTML/script is the dark-mode init snippet in [app/layout.tsx](app/layout.tsx), and that string is
-  a hard-coded constant with no user input anywhere near it. Every other piece of extracted or
-  typed-in text renders through normal React, which escapes it by default.
-- **HTTPS everywhere**, provided by Vercel for the deployed URL — no plaintext HTTP path exists for
-  the production deployment.
-- **Client-side storage is origin-scoped and contains no more than what you typed in.** The Review
-  Log lives in this origin's `localStorage`; browsers don't let other sites read it, and it holds
-  only the check results themselves — no credentials, tokens, or anything beyond the application
-  data a user entered and the label's extracted text.
-- **What a real production deployment would still need** that this prototype deliberately doesn't
-  attempt: authentication/authorization, server-side audit logging with PII/retention controls,
-  bot/abuse protection beyond a soft rate limit, dependency vulnerability scanning in CI, and a
-  documented incident-response path for the API key if it were ever exposed. All of this was scoped
-  out per the "don't do anything crazy, we're not storing anything sensitive for this exercise"
-  guidance from the IT interview, not overlooked.
+Short version: the Anthropic API key never reaches the browser, every request is validated
+server-side regardless of what any client-side check already caught, there's no database and
+nothing server-side persists between requests, and a per-IP rate limiter plus upload size/type
+caps guard against the one real cost risk — a link to this demo running up an unbounded Anthropic
+bill. See [SECURITY.md](SECURITY.md) for the reasoning behind each of those and what's honestly
+still missing for a production deployment (auth, audit logging, a hard spend cap, etc.).
 
 ## Assumptions
 
@@ -393,6 +318,10 @@ Nothing in this app rises to the level of regulated PII (no names tied to indivi
   needing a spreadsheet; use the single-photo comparison path when the exact match matters.
 
 ## Trade-offs & limitations
+
+Everything below is a scope trade-off, not a security gap — the security-specific subset of these
+(soft rate limiting, no auth, no audit log) is also covered from a threat-modeling angle in
+**[SECURITY.md](SECURITY.md)**, which is the place to look for *why* those are acceptable here.
 
 - **Latency vs. accuracy.** `claude-sonnet-5` at low effort was chosen specifically to chase the
   5-second target from the interviews; it is measurably faster and cheaper than the largest current
@@ -429,7 +358,7 @@ Nothing in this app rises to the level of regulated PII (no names tied to indivi
   one-line change once the API key has a real spend cap behind it (see **Security**); a production
   version would likely chunk a 200–300 photo drop into automatic sequential batches instead of
   asking the agent to split it manually.
-- **Rate limiting is a soft, best-effort guard, not a hard cap.** The limiter in
+- **Rate limiting guards against cost abuse, but only softly — not a hard cap.** The limiter in
   [lib/rate-limit.ts](lib/rate-limit.ts) is per-process in-memory state — on Vercel that means it's
   scoped to whichever warm serverless instance handles a given request, not shared globally, and it
   resets on a cold start or redeploy. It's good enough to stop casual abuse and to fail a demo

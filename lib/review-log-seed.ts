@@ -1,15 +1,16 @@
 import type { ReviewLogEntry } from "./review-log";
 
 // Nine permanent example cases: two each for Approved / Rejected / Flagged,
-// and three Pending — including one whose own verdict is "Needs Review"
-// rather than a plain Fail (Meadowbrook) and one that's a self-check result
+// and three Pending — including one whose own verdict is "Flagged" rather
+// than a plain Failed (Meadowbrook) and one that's a self-check result
 // rather than a comparison (Ironclad), so the Next Application flow and the
 // self-check display both have a realistic example to walk through, not
 // only the comparison/outright-failure path. Marked `isExample: true` in
-// lib/review-log-store.ts, which keeps them present for every user,
-// un-deletable, and immune to "Clear log" — they're reference material, not
-// real data, so they should never just be "there the first time" and then
-// gone. The first two (Old Tom, Harbor Light) are real Claude extraction
+// lib/review-log-store.ts, which keeps them present for every user by
+// default; hiding one or deciding on it is a per-device override rather
+// than a real delete — they're reference material, not real data, so they
+// should never just be "there the first time" and then gone for everyone.
+// The first two (Old Tom, Harbor Light) are real Claude extraction
 // output captured during testing; the rest are constructed directly from
 // what's actually printed on their label images (this project generates its
 // own sample labels, so that's known ground truth) — some landing on their

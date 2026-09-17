@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  AlertTriangle,
+  Flag,
   XCircle,
 } from "lucide-react";
 import ImageDropzone from "@/components/ImageDropzone";
@@ -94,7 +94,7 @@ export default function CheckPage() {
   const singleEntry = useReviewLogEntry(singleLoggedAt ?? -1);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [filter, setFilter] = useState<"all" | "ok" | "review" | "flagged" | "error">("all");
+  const [filter, setFilter] = useState<"all" | "ok" | "flagged" | "failed" | "error">("all");
 
   const isBatch = files.length > 1;
 
@@ -213,20 +213,20 @@ export default function CheckPage() {
   const summary = useMemo(() => {
     if (!batchItems) return null;
     const ok = batchItems.filter((r) => r.result?.overallStatus === "pass").length;
-    const review = batchItems.filter((r) => r.result?.overallStatus === "review").length;
-    const flagged = batchItems.filter((r) => r.result?.overallStatus === "fail").length;
+    const flagged = batchItems.filter((r) => r.result?.overallStatus === "review").length;
+    const failed = batchItems.filter((r) => r.result?.overallStatus === "fail").length;
     const errored = batchItems.filter((r) => r.error).length;
     const times = batchItems.filter((r) => r.result).map((r) => r.result!.processingTimeMs);
     const avgMs = times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0;
-    return { total: batchItems.length, ok, review, flagged, errored, avgMs };
+    return { total: batchItems.length, ok, flagged, failed, errored, avgMs };
   }, [batchItems]);
 
   const visibleBatchItems = useMemo(() => {
     if (!batchItems) return [];
     if (filter === "all") return batchItems;
     if (filter === "error") return batchItems.filter((r) => r.error);
-    const statusMap = { ok: "pass", review: "review", flagged: "fail" } as const;
-    return batchItems.filter((r) => r.result?.overallStatus === statusMap[filter as "ok" | "review" | "flagged"]);
+    const statusMap = { ok: "pass", flagged: "review", failed: "fail" } as const;
+    return batchItems.filter((r) => r.result?.overallStatus === statusMap[filter as "ok" | "flagged" | "failed"]);
   }, [batchItems, filter]);
 
   return (
@@ -308,13 +308,13 @@ export default function CheckPage() {
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <SummaryCard label="Total" value={summary.total} />
             <SummaryCard label="OK" value={summary.ok} tone="text-emerald-700 dark:text-emerald-400" />
-            <SummaryCard label="Review" value={summary.review} tone="text-amber-700 dark:text-amber-400" />
-            <SummaryCard label="Flagged" value={summary.flagged} tone="text-rose-700 dark:text-rose-400" />
+            <SummaryCard label="Flagged" value={summary.flagged} tone="text-amber-700 dark:text-amber-400" />
+            <SummaryCard label="Failed" value={summary.failed} tone="text-rose-700 dark:text-rose-400" />
             <SummaryCard label="Avg time" value={`${(summary.avgMs / 1000).toFixed(1)}s`} />
           </div>
 
           <div className="mb-3 flex flex-wrap gap-2">
-            {(["all", "ok", "review", "flagged", "error"] as const).map((f) => (
+            {(["all", "ok", "flagged", "failed", "error"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -384,7 +384,7 @@ function BatchItemDecision({ item }: { item: BatchItem }) {
 function BatchStatusIcon({ item }: { item: BatchItem }) {
   if (item.error) return <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
   if (item.result?.overallStatus === "pass") return <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
-  if (item.result?.overallStatus === "review") return <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+  if (item.result?.overallStatus === "review") return <Flag className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
   if (item.result?.overallStatus === "fail") return <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />;
   return <Loader2 className="h-4 w-4 animate-spin text-muted" />;
 }
