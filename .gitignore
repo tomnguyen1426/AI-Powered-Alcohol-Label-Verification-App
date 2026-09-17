@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files -- .env.local.example is a template with no real secret in it,
+# so it's the one exception meant to be committed (the README's setup step
+# copies it to .env.local, which needs to exist for a fresh clone to work).
 .env*
+!.env.local.example
 
 # vercel
 .vercel
@@ -39,6 +42,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-.vercel
-.env*
