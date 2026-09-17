@@ -32,7 +32,7 @@ asset actually treated as a secret.
   cost abuse** below.
 - **Tampering** — in transit, HTTPS (via Vercel) rules out a network-level man-in-the-middle
   altering a request or response. More importantly, the server never trusts a client-supplied
-  verdict: every PASS/FLAGGED/FAILED comes from re-deriving the comparison server-side from the
+  verdict: every Pass/Flagged/Failed comes from re-deriving the comparison server-side from the
   actual uploaded image bytes and the actual submitted application data
   (`app/api/verify/route.ts`), so a client can't send a pre-built "PASS" result and have it
   accepted. A user *can* edit their own `localStorage` (their own Review Log, their own decisions)

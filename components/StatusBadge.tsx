@@ -8,8 +8,8 @@ import type { CheckMode, FieldStatus, OverallStatus } from "@/lib/schema";
 // keeps the vocabulary small; the fail tier is "Failed" specifically so it
 // never collides with this one.
 const overallLabels: Record<CheckMode, Record<OverallStatus, string>> = {
-  comparison: { pass: "PASS", review: "FLAGGED", fail: "FAILED" },
-  self_check: { pass: "OK", review: "FLAGGED", fail: "FAILED" },
+  comparison: { pass: "Pass", review: "Flagged", fail: "Failed" },
+  self_check: { pass: "OK", review: "Flagged", fail: "Failed" },
 };
 
 const overallConfig: Record<OverallStatus, { classes: string; Icon: typeof CheckCircle2 }> = {

@@ -32,7 +32,7 @@ requirements:
   against the background — those need a physical reference in the image this app doesn't have, so
   they're an honest gap, not something faked. See **Trade-offs & limitations**.
 - **Built for Dave and Sarah's mother, not just Jenny.** One upload zone, one form, one button, a
-  plain-language PASS / FLAGGED / FAILED banner before any detail table. No settings screen, no
+  plain-language Pass / Flagged / Failed banner before any detail table. No settings screen, no
   jargon, no marketing landing page to click through — the tool itself is the front page. The one
   setting that does exist — light/dark — is an explicit labeled switch, not an icon someone has to
   guess the meaning of.
@@ -49,7 +49,7 @@ requirements:
 - **A Review Log to work through, not just a one-off result.** Every check (single or batch) lands
   in a running log, and each entry opens on its own page — image, full field-by-field readout, and
   an Approve / Flag / Reject decision that's separate from and can override the tool's own
-  PASS/FLAGGED/FAILED read. "Flagged" is the deliberately reused word — the AI's own "needs a
+  Pass/Flagged/Failed read. "Flagged" is the deliberately reused word — the AI's own "needs a
   closer look" verdict and a human's "hold this for follow-up" decision are conceptually the same
   thing, just at different points in the process, so they share one word and one flag icon instead
   of competing near-synonyms ("Needs Review" vs. "Flagged" read as two different states when they
@@ -60,7 +60,7 @@ requirements:
   detour through the Review Log required if you want to decide immediately. Each row shows exactly
   one status badge, not two: the decision once a human has made one, falling back to the AI's own
   verdict while it's still Pending — showing both at once read as duplicated and confusing (a red
-  "FAILED" next to a red "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
+  "Failed" next to a red "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
   ("Rejected 'X'") with two ways forward: back to the list, or straight on to the next application
   worth a look — "Next Application" searches forward through the log for the next **Pending** entry
   first, since those haven't been looked at at all, and only offers up a **Flagged** one once every
