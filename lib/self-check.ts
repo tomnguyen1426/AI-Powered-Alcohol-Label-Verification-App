@@ -79,7 +79,10 @@ function warningSelfCheck(extraction: LabelExtraction): FieldComparison {
     };
   }
 
-  const exact = normalizeWhitespace(value) === normalizeWhitespace(STANDARD_GOVERNMENT_WARNING);
+  // Word-for-word required, but not case-sensitive — see the matching comment
+  // in lib/compare.ts's compareWarning: only the heading has to be all-caps
+  // (checked separately below), not the body.
+  const exact = normalizeWhitespace(value).toLowerCase() === normalizeWhitespace(STANDARD_GOVERNMENT_WARNING).toLowerCase();
   const headingOk = extraction.warning_heading_all_caps_bold;
   const bodyOk = !extraction.warning_body_is_bold;
 

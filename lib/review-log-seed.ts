@@ -163,7 +163,7 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
           labelValue:
             "Government Warning: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
           status: "mismatch",
-          note: "Wording does not match the required statement exactly; 'GOVERNMENT WARNING:' heading must be all-caps and bold",
+          note: "'GOVERNMENT WARNING:' heading must be all-caps and bold",
         },
       ],
       overallStatus: "fail",

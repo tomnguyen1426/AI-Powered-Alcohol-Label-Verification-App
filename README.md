@@ -24,10 +24,12 @@ requirements:
   matching rules are auditable independent of the AI extraction step.
 - **Zero tolerance where it matters.** Jenny's point about the Government Warning statement is the
   one field that is *not* fuzzy-matched, checked against 27 CFR 16.21 and TTB's published guidance
-  directly: the wording must be word-for-word correct, the "GOVERNMENT WARNING:" heading must be
-  all-caps and bold, and — easy to miss — the rest of the statement must specifically **not** be
-  bold (only the heading is allowed to be). Any deviation on any of the three is a hard
-  **Mismatch**. What this still can't check from a photo: the regulation's exact type-size
+  directly: the wording must be word-for-word correct (case-insensitively — the regulation only
+  requires the heading itself to be all-caps, not the body, so a label that prints the whole
+  statement in caps is still a wording match), the "GOVERNMENT WARNING:" heading must be all-caps
+  and bold, and — easy to miss — the rest of the statement must specifically **not** be bold (only
+  the heading is allowed to be). Any deviation on any of the three is a hard **Mismatch**. What
+  this still can't check from a photo: the regulation's exact type-size
   (1–3 mm depending on container size) and max-characters-per-inch rules, or general legibility
   against the background — those need a physical reference in the image this app doesn't have, so
   they're an honest gap, not something faked. See **Trade-offs & limitations**.

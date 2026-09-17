@@ -237,8 +237,13 @@ function compareWarning(extraction: LabelExtraction): FieldComparison {
     };
   }
 
-  // Word-for-word required — case-sensitive, only whitespace is normalized.
-  const exact = normalizeWhitespace(labelValue) === normalizeWhitespace(STANDARD_GOVERNMENT_WARNING);
+  // Word-for-word required, but not case-sensitive: 27 CFR 16.21 mandates the
+  // "GOVERNMENT WARNING:" heading be all-caps and bold (checked separately
+  // below via headingOk/bodyOk) but says nothing about the case of the body
+  // text itself — printing the whole statement in all caps is a common,
+  // compliant stylistic choice, not a wording deviation.
+  const exact =
+    normalizeWhitespace(labelValue).toLowerCase() === normalizeWhitespace(STANDARD_GOVERNMENT_WARNING).toLowerCase();
   const headingOk = extraction.warning_heading_all_caps_bold;
   const bodyOk = !extraction.warning_body_is_bold;
 
