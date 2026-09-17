@@ -54,7 +54,10 @@ requirements:
   Review Log required if you want to decide immediately. Each row shows exactly one status badge,
   not two: the decision once a human has made one, falling back to the AI's own verdict while it's
   still Pending — showing both at once read as duplicated and confusing (a red "FAIL" next to a red
-  "Rejected"). Entries can be deleted individually or the whole log cleared at once. See
+  "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
+  ("Rejected 'X'") with two ways forward: back to the list, or straight on to the next entry still
+  waiting on a call, so working through a stack of applications doesn't mean returning to the list
+  after every single one. Entries can be deleted individually or the whole log cleared at once. See
   **What actually persists** below for exactly what that does and doesn't save.
 - **Four example cases, the same for every device.** So the Review Log isn't an empty page (or a
   pile of duplicate seed data) the first time anyone opens it, four reference cases — one per
@@ -166,6 +169,58 @@ There's one upload zone. What happens next depends on how many photos land in it
    in. Each label ends up **OK**, **Needs Review**, or **Flagged**.
 
 Both paths show the source image, a per-field readout, and the processing time.
+
+## Validation & error messages
+
+What's actually required, and exactly what you'll see if something's missing or goes wrong —
+spelled out here rather than left to trial and error.
+
+**Required to submit a single check:**
+
+- **Brand Name** — always required. Leaving it blank and clicking Verify Label shows *"Brand Name
+  is required to check against."* and doesn't submit.
+- **Country of Origin** — required only once **"This is an imported product"** is checked, both in
+  the UI (immediate error: *"Country of Origin is required when 'This is an imported product' is
+  checked."*) and in the API's own validation (`ApplicationDataSchema` in
+  [lib/schema.ts](lib/schema.ts) — the actual authority; the UI check just gives an instant message
+  instead of a round-trip).
+- **Beverage Type** is never a blocking field — "Auto-detect from label" is itself a valid choice,
+  not a placeholder for one.
+- Everything else (Class/Type, ABV, Net Contents, Producer/Address) can be left blank; a gap there
+  shows up as an **N/A** in the comparison instead of blocking submission.
+- At least one photo has to be in the upload zone at all — otherwise: *"Upload at least one label
+  photo first."*
+
+**Upload validation** (checked both client-side, for instant feedback, and server-side, which is
+the real authority):
+
+- Only PNG, JPEG, or WEBP. Anything else is silently skipped from the upload list with a small
+  *"Skipped: filename (unsupported type)"* note rather than a hard error.
+- 4 MB per image, max. Oversized files get the same *"Skipped: filename (over 4 MB)"* treatment
+  client-side; if one somehow reaches the server anyway, the API rejects it with *"Image is too
+  large (4 MB max)."*
+- Batch mode caps out at 100 photos per run on this demo — past that: *"Please check 100 labels or
+  fewer at a time on this demo."*
+
+**If something fails after you hit Verify** — these come from [app/page.tsx](app/page.tsx)'s
+`verifyOne` helper, which every check (single or batch) goes through:
+
+- Can't reach the server at all → *"Network error — could not reach the server."*
+- Hit the shared rate limit (see **Security**) → *"This demo is rate-limited to keep API costs in
+  check. Try again shortly."* (batch mode retries this automatically a few times with a backoff
+  instead of surfacing it immediately).
+- The server responded with something unparseable → *"The server returned an unreadable
+  response."*
+- The label extraction itself timed out → *"The label extraction took too long and timed out.
+  Please try again."*
+- Anything else the server rejected comes through as whatever specific message the API returned
+  (e.g. an invalid-JSON or schema-validation message from `ApplicationDataSchema`), falling back to
+  a generic *"Verification failed."* / *"Verification failed unexpectedly. Please try again."* only
+  when there's truly nothing more specific to say.
+
+**In the Review Log:** opening a link to an entry that's since been deleted, hidden, or cleared
+shows *"Entry not found — it may have been deleted, or the review log was cleared."* rather than a
+blank or broken page.
 
 ## What actually persists
 

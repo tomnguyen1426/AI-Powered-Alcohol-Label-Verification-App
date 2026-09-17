@@ -1,9 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronRight, Trash2, Inbox, ArrowRight, CheckCircle2, Flag, XCircle, RotateCcw } from "lucide-react";
+import { ChevronRight, Trash2, Inbox, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
@@ -29,48 +28,7 @@ const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string; 
   },
 };
 
-const toastMeta: Record<ReviewDecision, { verb: string; Icon: typeof CheckCircle2; classes: string }> = {
-  approved: { verb: "Approved", Icon: CheckCircle2, classes: "bg-emerald-600 text-white" },
-  rejected: { verb: "Rejected", Icon: XCircle, classes: "bg-rose-600 text-white" },
-  flagged: { verb: "Flagged for follow-up", Icon: Flag, classes: "bg-amber-600 text-white" },
-  pending: { verb: "Cleared back to Pending", Icon: RotateCcw, classes: "bg-foreground text-background" },
-};
-
 type FilterValue = "all" | ReviewDecision;
-
-function DecisionToast() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [toast, setToast] = useState<{ decision: ReviewDecision; name: string } | null>(null);
-
-  // One-time consumption of a query param the previous page navigated here
-  // with (?decided=...&name=...), then strip it from the URL so a refresh
-  // doesn't replay it. There's no external-store equivalent for "read once
-  // on mount and schedule a timer" the way Queue/ThemeToggle use
-  // useSyncExternalStore, so this is a deliberate, justified effect.
-  useEffect(() => {
-    const decided = searchParams.get("decided");
-    const name = searchParams.get("name");
-    if (decided && name && decided in toastMeta) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setToast({ decision: decided as ReviewDecision, name });
-      router.replace("/history");
-      const timer = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (!toast) return null;
-  const meta = toastMeta[toast.decision];
-
-  return (
-    <div className={clsx("mb-6 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium shadow-sm", meta.classes)}>
-      <meta.Icon className="h-4 w-4 shrink-0" />
-      {meta.verb} &ldquo;{toast.name}&rdquo;
-    </div>
-  );
-}
 
 export default function HistoryPage() {
   const entries = useReviewLog();
@@ -94,9 +52,6 @@ export default function HistoryPage() {
   if (entries.length === 0) {
     return (
       <div className="mx-auto flex max-w-2xl flex-col items-center px-4 py-24 text-center sm:px-6">
-        <Suspense fallback={null}>
-          <DecisionToast />
-        </Suspense>
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface text-muted">
           <Inbox className="h-6 w-6" />
         </span>
@@ -118,9 +73,6 @@ export default function HistoryPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <Suspense fallback={null}>
-        <DecisionToast />
-      </Suspense>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Review Log</h1>
