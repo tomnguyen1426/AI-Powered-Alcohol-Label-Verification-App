@@ -59,9 +59,10 @@ requirements:
   waiting on a call, so working through a stack of applications doesn't mean returning to the list
   after every single one. Entries can be deleted individually or the whole log cleared at once. See
   **What actually persists** below for exactly what that does and doesn't save.
-- **Four example cases, the same for every device.** So the Review Log isn't an empty page (or a
-  pile of duplicate seed data) the first time anyone opens it, four reference cases — one per
-  decision state — ship as part of the app itself rather than as data written into any one device's
+- **Nine example cases, the same for every device.** So the Review Log isn't an empty page (or a
+  pile of duplicate seed data) the first time anyone opens it, nine reference cases — spread across
+  all four decision states and every overall outcome, including a self-check result, not just
+  comparison ones — ship as part of the app itself rather than as data written into any one device's
   storage. That means they show up identically everywhere the app is opened, hiding one on your
   laptop doesn't remove it from your phone, and a decision you change on one only affects that
   device's view of it. See **What actually persists**.
@@ -116,11 +117,12 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Sample data
 
-Seven synthetic label images (no real brands) are generated into `public/sample-labels/` by
+Nine synthetic label images (no real brands) are generated into `public/sample-labels/` by
 [scripts/generate-sample-labels.ts](scripts/generate-sample-labels.ts) — a clean pass, a harmless
-brand-name case difference, a strict warning-formatting failure (title-case heading), a whole-warning-
-bold violation, a genuine ABV mismatch, a glare-affected photo, and an import with country-of-origin.
-Regenerate/extend them with:
+brand-name case difference, a strict warning-formatting failure (title-case heading), a
+whole-warning-bold violation, a genuine ABV mismatch, a glare-affected photo, an import with
+country-of-origin, a wine label with a producer near-miss, and a beer label with no ABV stated at
+all (a real exemption, not a mismatch). Regenerate/extend them with:
 
 ```bash
 npm run gen:labels
@@ -128,16 +130,18 @@ npm run gen:labels
 
 (uses `@napi-rs/canvas`, a dev-only dependency — not required at runtime).
 
-Four of these are always in the **Review Log** — one for each decision state (an Approved pass, a
-Rejected fail, a Flagged "needs review", and a still-Pending fail) — so there's something to look
-at right away, in every filter, on every device. See [lib/review-log-seed.ts](lib/review-log-seed.ts):
-the first two are real Claude output captured during testing; the other two are constructed directly
-from what's actually printed on their label images (this app generates its own sample labels, so
-that's known ground truth), specifically to land in the Review and Fail bands. All four run through
-the same deterministic comparison logic the app uses live — nothing fabricated, just baked into the
-app rather than fetched, so this costs zero API calls.
+Nine of these are always in the **Review Log** — spread across all four decision states (two each
+Approved / Rejected / Flagged, three Pending) and every overall outcome, including one self-check
+result (the beer label) rather than only comparison ones — so there's something to look at right
+away, in every filter, on every device. See [lib/review-log-seed.ts](lib/review-log-seed.ts): the
+first two are real Claude output captured during testing; the rest are constructed directly from
+what's actually printed on their label images (this app generates its own sample labels, so that's
+known ground truth) — some landing on their label's natural outcome, others with a deliberately
+introduced near-miss to land in the Review band. All nine run through the same deterministic
+comparison/self-check logic the app uses live — nothing fabricated, just baked into the app rather
+than fetched, so this costs zero API calls.
 
-These four are shipped in the code (`REVIEW_LOG_SEED`), not written into any device's `localStorage`
+These nine are shipped in the code (`REVIEW_LOG_SEED`), not written into any device's `localStorage`
 as data — that's deliberate, see **What actually persists** for why it means they're identical on
 every device by default. They can still be deleted from the list (the button reads "Hide" on the
 entry page to be precise about what that does) and decided on like anything else; both of those
@@ -234,7 +238,7 @@ because this is the kind of thing worth being precise about:
 | A real check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Review Log | **Yes** | No — this device only |
 | A real check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
 | Your Approve/Reject/Flag decisions on a real check | **Yes** | Browser `localStorage`, alongside the log entry | **Yes** | No — this device only |
-| The four example cases (image, fields, default decision) | **Yes** | Shipped in the app's code (`lib/review-log-seed.ts`), not written to `localStorage` at all | **Yes** | **Yes** — identical everywhere by default |
+| The nine example cases (image, fields, default decision) | **Yes** | Shipped in the app's code (`lib/review-log-seed.ts`), not written to `localStorage` at all | **Yes** | **Yes** — identical everywhere by default |
 | Hiding an example, or changing its decision | **Yes** | A small separate `localStorage` override (which example IDs are hidden, and any decision changes) | **Yes** | No — this device only; a different device still sees the untouched default |
 | Anthropic API key | N/A | Server-side environment variable only | — | N/A — never sent to the browser at all |
 
@@ -247,7 +251,7 @@ photo itself past the current page load, specifically so a long day of checks do
 browser storage limits (localStorage is typically capped around 5–10 MB per site, and photos are the
 only thing here large enough to hit that).
 
-The four **example** cases are the opposite in every one of those respects, on purpose: they're
+The nine **example** cases are the opposite in every one of those respects, on purpose: they're
 part of the app itself, so they're identical wherever it's opened, and the only thing that's ever
 local is whether *you* have chosen to hide one or change its decision on the device in front of you.
 
@@ -394,10 +398,11 @@ lib/
   review-log.ts                   localStorage read/write for real Review Log entries (image
                                     stripped before saving, unless it's a small bundled path) and
                                     for the small per-device example-override list
-  review-log-store.ts               Reactive in-memory store — merges the four built-in examples
+  review-log-store.ts               Reactive in-memory store — merges the nine built-in examples
                                       with real entries, log/delete/decide/clear, shared by the
                                       Check page and Review Log pages
-  review-log-seed.ts                  The four permanent example cases (one per decision state)
+  review-log-seed.ts                  The nine permanent example cases, across every decision
+                                        state and outcome
   sample-data.ts                        Sample label metadata (dev/reference — regenerate seed
                                           data from this, nothing at runtime imports it directly)
 components/                                UI components (ThemeToggle.tsx = dark mode switch,

@@ -24,7 +24,7 @@ interface LabelSpec {
   fileName: string;
   brand: string;
   classType: string;
-  abvText: string;
+  abvText?: string; // omit entirely for a beer/wine label exempt from stating ABV
   netContents: string;
   producer: string;
   country?: string;
@@ -105,8 +105,10 @@ function drawLabel(spec: LabelSpec) {
 
   ctx.font = "28px Georgia";
   ctx.fillStyle = "#1c1c1c";
-  ctx.fillText(spec.abvText, centerX, y);
-  y += 42;
+  if (spec.abvText) {
+    ctx.fillText(spec.abvText, centerX, y);
+    y += 42;
+  }
   ctx.fillText(spec.netContents, centerX, y);
   y += 55;
 
@@ -241,6 +243,33 @@ const labels: LabelSpec[] = [
     warningBody: STANDARD_WARNING,
     accent: "#4a2e1f",
     paper: "#f6f0e4",
+  },
+  {
+    fileName: "ironclad-brewing-ipa.png",
+    brand: "IRONCLAD BREWING CO.",
+    classType: "India Pale Ale",
+    // No ABV line at all — some beer is exempt from stating it, and this
+    // label exercises exactly that instead of an ABV mismatch/typo.
+    netContents: "12 FL OZ",
+    producer: "Ironclad Brewing Co., Denver, CO",
+    warningHeading: "GOVERNMENT WARNING:",
+    warningHeadingBold: true,
+    warningBody: STANDARD_WARNING,
+    accent: "#8a4a12",
+    paper: "#f6efe2",
+  },
+  {
+    fileName: "meadowbrook-chardonnay.png",
+    brand: "MEADOWBROOK CELLARS",
+    classType: "Chardonnay",
+    abvText: "13% Alc./Vol.",
+    netContents: "750 mL",
+    producer: "Meadowbrook Cellars, Napa, CA",
+    warningHeading: "GOVERNMENT WARNING:",
+    warningHeadingBold: true,
+    warningBody: STANDARD_WARNING,
+    accent: "#5c2a3a",
+    paper: "#f9f2f4",
   },
   {
     fileName: "castaway-import-rum.png",
