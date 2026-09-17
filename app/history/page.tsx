@@ -2,29 +2,35 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Trash2, Inbox, ArrowRight } from "lucide-react";
+import { ChevronRight, Trash2, Inbox, ArrowRight, CheckCircle2, XCircle, Flag } from "lucide-react";
 import clsx from "clsx";
 import { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
 import { useReviewLog, deleteEntry } from "@/lib/review-log-store";
 import type { ReviewDecision } from "@/lib/review-log";
 
-const decisionMeta: Record<ReviewDecision, { label: string; dotClasses: string; badgeClasses: string }> = {
-  pending: { label: "Pending", dotClasses: "bg-muted", badgeClasses: "text-muted bg-surface" },
+const decisionMeta: Record<
+  ReviewDecision,
+  { label: string; dotClasses: string; badgeClasses: string; Icon: typeof CheckCircle2 }
+> = {
+  pending: { label: "Pending", dotClasses: "bg-muted", badgeClasses: "text-muted bg-surface ring-border", Icon: CheckCircle2 },
   approved: {
     label: "Approved",
     dotClasses: "bg-emerald-500",
-    badgeClasses: "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40",
+    badgeClasses: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-400/20",
+    Icon: CheckCircle2,
   },
   rejected: {
     label: "Rejected",
     dotClasses: "bg-rose-500",
-    badgeClasses: "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40",
+    badgeClasses: "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-950/40 dark:text-rose-400 dark:ring-rose-400/20",
+    Icon: XCircle,
   },
   flagged: {
     label: "Flagged",
     dotClasses: "bg-amber-500",
-    badgeClasses: "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/40",
+    badgeClasses: "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-400/20",
+    Icon: Flag,
   },
 };
 
@@ -132,14 +138,7 @@ export default function HistoryPage() {
               {entry.decision === "pending" ? (
                 <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
               ) : (
-                <span
-                  className={clsx(
-                    "rounded-full px-2 py-0.5 text-xs font-medium",
-                    decisionMeta[entry.decision].badgeClasses,
-                  )}
-                >
-                  {decisionMeta[entry.decision].label}
-                </span>
+                <DecisionBadge decision={entry.decision} />
               )}
               <span className="hidden text-xs text-muted sm:inline">
                 {new Date(entry.loggedAt).toLocaleString([], {
@@ -168,5 +167,20 @@ export default function HistoryPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+function DecisionBadge({ decision }: { decision: ReviewDecision }) {
+  const meta = decisionMeta[decision];
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ring-1 ring-inset",
+        meta.badgeClasses,
+      )}
+    >
+      <meta.Icon className="h-4 w-4" />
+      {meta.label}
+    </span>
   );
 }
