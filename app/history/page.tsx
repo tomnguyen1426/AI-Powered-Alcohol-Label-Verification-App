@@ -182,15 +182,18 @@ export default function HistoryPage() {
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {displayName(entry.result)}
               </span>
-              <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
-              <span
-                className={clsx(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  decisionMeta[entry.decision].badgeClasses,
-                )}
-              >
-                {decisionMeta[entry.decision].label}
-              </span>
+              {entry.decision === "pending" ? (
+                <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
+              ) : (
+                <span
+                  className={clsx(
+                    "rounded-full px-2 py-0.5 text-xs font-medium",
+                    decisionMeta[entry.decision].badgeClasses,
+                  )}
+                >
+                  {decisionMeta[entry.decision].label}
+                </span>
+              )}
               <span className="hidden text-xs text-muted sm:inline">
                 {new Date(entry.loggedAt).toLocaleString([], {
                   month: "short",
