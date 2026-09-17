@@ -94,13 +94,15 @@ export async function POST(req: Request) {
       imageDataUrl: `data:${image.type};base64,${imageBuffer.toString("base64")}`,
     });
   } catch (err) {
+    // Full error (which may include internal Anthropic SDK/API diagnostic
+    // detail) is logged server-side only — the client gets a generic message,
+    // not err.message verbatim, so nothing about the upstream API's internals
+    // is disclosed to whoever is calling this route.
     console.error("Verification failed:", err);
-    const message =
-      err instanceof Error
-        ? /timeout|timed out/i.test(err.message)
-          ? "The label extraction took too long and timed out. Please try again."
-          : err.message
-        : "Verification failed unexpectedly. Please try again.";
+    const timedOut = err instanceof Error && /timeout|timed out/i.test(err.message);
+    const message = timedOut
+      ? "The label extraction took too long and timed out. Please try again."
+      : "Verification failed unexpectedly. Please try again.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

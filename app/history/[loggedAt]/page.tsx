@@ -25,18 +25,25 @@ export default function ReviewLogEntryPage() {
   const allEntries = useReviewLog();
   const [justDecided, setJustDecided] = useState<ReviewDecision | null>(null);
 
-  // "Next application" means the next one still waiting on a call, so a
-  // reviewer can move through the queue without detouring back to the list
-  // each time. Searches forward from this entry's position in the log,
+  // "Next application" means the next one still worth a look, so a reviewer
+  // can move through the queue without detouring back to the list each
+  // time. Pending entries come first — those haven't been looked at at
+  // all — and only once none of those are left does it offer up a Flagged
+  // one (already looked at once, held for follow-up, but still not a final
+  // Approved/Rejected call). Searches forward from this entry's position,
   // wrapping around, so it still works if this was the last row.
-  function findNextPending() {
+  function findNextWithDecision(decision: ReviewDecision) {
     const index = allEntries.findIndex((e) => e.loggedAt === loggedAt);
     if (index === -1) return undefined;
     for (let i = 1; i < allEntries.length; i++) {
       const candidate = allEntries[(index + i) % allEntries.length];
-      if (candidate.decision === "pending") return candidate;
+      if (candidate.decision === decision) return candidate;
     }
     return undefined;
+  }
+
+  function findNextToReview() {
+    return findNextWithDecision("pending") ?? findNextWithDecision("flagged");
   }
 
   if (!entry) {
@@ -54,7 +61,7 @@ export default function ReviewLogEntryPage() {
     );
   }
 
-  const nextPending = justDecided ? findNextPending() : undefined;
+  const nextToReview = justDecided ? findNextToReview() : undefined;
   const DecidedIcon = justDecided ? decidedMeta[justDecided].Icon : null;
 
   return (
@@ -117,10 +124,10 @@ export default function ReviewLogEntryPage() {
                 <ArrowLeft className="h-4 w-4" />
                 Back to Review Log
               </button>
-              {nextPending ? (
+              {nextToReview ? (
                 <button
                   type="button"
-                  onClick={() => router.push(`/history/${nextPending.loggedAt}`)}
+                  onClick={() => router.push(`/history/${nextToReview.loggedAt}`)}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   Next Application
@@ -129,7 +136,7 @@ export default function ReviewLogEntryPage() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-sm text-muted">
                   <PartyPopper className="h-4 w-4" />
-                  Nothing else pending
+                  Nothing else pending or flagged
                 </span>
               )}
             </div>

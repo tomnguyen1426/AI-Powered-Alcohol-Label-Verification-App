@@ -55,8 +55,12 @@ requirements:
   not two: the decision once a human has made one, falling back to the AI's own verdict while it's
   still Pending — showing both at once read as duplicated and confusing (a red "FAIL" next to a red
   "Rejected"). Deciding on an entry from its own page swaps the decision buttons for a confirmation
-  ("Rejected 'X'") with two ways forward: back to the list, or straight on to the next entry still
-  waiting on a call, so working through a stack of applications doesn't mean returning to the list
+  ("Rejected 'X'") with two ways forward: back to the list, or straight on to the next application
+  worth a look — "Next Application" searches forward through the log for the next **Pending** entry
+  first, since those haven't been looked at at all, and only offers up a **Flagged** one once every
+  Pending entry has been cleared, since those have already been seen once and held for follow-up
+  rather than left untouched. Once neither is left, it says so instead of showing a dead-end button.
+  That priority means working through a stack of applications doesn't mean returning to the list
   after every single one. Entries can be deleted individually or the whole log cleared at once. See
   **What actually persists** below for exactly what that does and doesn't save.
 - **Nine example cases, the same for every device.** So the Review Log isn't an empty page (or a
@@ -217,10 +221,14 @@ the real authority):
   response."*
 - The label extraction itself timed out → *"The label extraction took too long and timed out.
   Please try again."*
-- Anything else the server rejected comes through as whatever specific message the API returned
-  (e.g. an invalid-JSON or schema-validation message from `ApplicationDataSchema`), falling back to
-  a generic *"Verification failed."* / *"Verification failed unexpectedly. Please try again."* only
-  when there's truly nothing more specific to say.
+- Any other failure calling Claude → a generic *"Verification failed unexpectedly. Please try
+  again."* — the real error is logged server-side only (`console.error`), never echoed back to the
+  browser verbatim, since it could contain internal Anthropic SDK/API diagnostic detail rather than
+  anything meant for an end user. See **Security**.
+- A 400 rejected *before* any call to Claude (missing image, unsupported type, oversized file,
+  malformed/invalid application data) does return a specific message — but only ever text this app
+  wrote itself (e.g. *"Brand name is required"* from `ApplicationDataSchema`'s own validation
+  rules), never anything sourced from an upstream system.
 
 **In the Review Log:** opening a link to an entry that's since been deleted, hidden, or cleared
 shows *"Entry not found — it may have been deleted, or the review log was cleared."* rather than a
@@ -261,7 +269,60 @@ queue — that needs a server-side database and is explicitly not what this prot
 
 ## Security
 
-What's actually in place, in one place, rather than scattered across other sections:
+### Assets & data classification
+
+What this app actually handles, and how sensitive each thing is:
+
+| Asset | Classification | Where it lives | Notes |
+|---|---|---|---|
+| Anthropic API key | Secret | Server-only env var (`.env.local` / Vercel project config) | Never sent to the client; never committed. |
+| Uploaded label photo | Transient, business-confidential | In memory for the duration of one request only | Not written to disk or a database server-side. Persisted client-side only as a small static sample path or dropped entirely — see **What actually persists**. |
+| Typed-in application data (brand, class/type, ABV, etc.) | Internal / business data | Browser memory during a check; `localStorage` afterward if the result is kept | Not secret, but it's a real applicant's filing details — not something to leak to another site or another device by accident. |
+| Extracted label text + comparison verdict | Internal / business data | `localStorage` (Review Log), same origin only | Derived from the two inputs above; same sensitivity. |
+| Review Log entries (real checks) | Internal / business data | Client-side only, this browser/device only | Never leaves the browser once created — see **What actually persists**. |
+| The nine example cases | Public / reference | Shipped in source ([lib/review-log-seed.ts](lib/review-log-seed.ts)) | Synthetic, invented data — not a real applicant, safe to be public and identical on every device. |
+| Rate-limiter counters | Minimal / operational | Server memory only, per-IP, reset on redeploy | Contains a client IP and a request count — nothing else — and only for the rate-limiting window. |
+| Source code & deployment config | Public | GitHub repo, Vercel project | Secrets (the API key) are deliberately excluded via `.env.local` + `.gitignore`, not just "not committed yet." |
+
+Nothing in this app rises to the level of regulated PII (no names tied to individuals, no payment data, no health data) — the most sensitive thing here is the Anthropic API key, which is the one asset actually treated as a secret.
+
+### Threats considered (STRIDE)
+
+- **Spoofing** — not applicable in any meaningful sense: there's no login, no session, and no identity
+  to impersonate. The one place spoofing *could* matter — a malicious client claiming to be a
+  different IP to dodge the rate limit — is a known, accepted gap; see **Denial of Service** below.
+- **Tampering** — in transit, HTTPS (via Vercel) rules out a network-level man-in-the-middle altering
+  a request or response. More importantly, the server never trusts a client-supplied verdict: every
+  PASS/REVIEW/FAIL comes from re-deriving the comparison server-side from the actual uploaded image
+  bytes and the actual submitted application data (`app/api/verify/route.ts`), so a client can't send
+  a pre-built "PASS" result and have it accepted. A user *can* edit their own `localStorage` (their
+  own Review Log, their own decisions) — but that's tampering with their own browser's own view of
+  their own data; it doesn't touch the server, doesn't affect any other device, and doesn't grant
+  anything a legitimate decision button wouldn't.
+- **Repudiation** — explicitly out of scope, not overlooked: there's no server-side audit log, so
+  there's no record of who ran which check or made which decision beyond what sits in that one
+  browser's `localStorage`. That's an acceptable gap for an internal review/demo prototype and is
+  called out again under **What a real production deployment would still need** below.
+- **Information disclosure** — the API key is the one real secret and never reaches the client (see
+  below). Error messages returned to the browser were audited as part of this: the verify route used
+  to echo `err.message` from a failed Claude API call straight back to the client, which could leak
+  internal Anthropic SDK/API diagnostic detail; it now always returns a generic message (or a
+  pre-written timeout-specific one) and logs the real error server-side only via `console.error` — see
+  **Validation & error messages**. One disclosure is real and intentional, not a bug: the label image
+  and application data are sent to Anthropic's API to run the extraction, which is the whole point of
+  the app, and is a third party the operator is trusting by design. Client-side storage is
+  origin-scoped, so no other site can read a browser's Review Log.
+- **Denial of service** — the per-IP rate limiter and the request/file/type size caps
+  ([lib/rate-limit.ts](lib/rate-limit.ts), [lib/constants.ts](lib/constants.ts)) are the front-line
+  defense against a link to this demo running up an unbounded API bill or a single oversized upload
+  tying up a request. Both are acknowledged as soft: the rate limiter is in-memory per serverless
+  instance, so it doesn't hold up strictly across Vercel's scaled-out instances, and an attacker can
+  simply rotate IPs. The real backstop for this deployment is a spend cap set directly on the
+  Anthropic API key in the Anthropic Console, which no amount of in-app logic can be bypassed around.
+- **Elevation of privilege** — not applicable: there are no privilege levels, roles, or permissions
+  anywhere in this app for anything to elevate into.
+
+### Controls in place
 
 - **The Anthropic API key never reaches the browser.** It's read from a server-side environment
   variable ([lib/extract.ts](lib/extract.ts)) inside an API route that only runs on the server;
