@@ -49,8 +49,19 @@ requirements:
 - **A Review Log to work through, not just a one-off result.** Every check (single or batch) lands
   in a running log, and each entry opens on its own page — image, full field-by-field readout, and
   an Approve / Flag / Reject decision that's separate from and can override the tool's own
-  PASS/REVIEW/FAIL read. Entries can be deleted individually or the whole log cleared at once. See
+  PASS/REVIEW/FAIL read. The same decision control also shows up right on the Check page as soon as
+  a result comes back, for both a single check and each item in a batch — no detour through the
+  Review Log required if you want to decide immediately. Each row shows exactly one status badge,
+  not two: the decision once a human has made one, falling back to the AI's own verdict while it's
+  still Pending — showing both at once read as duplicated and confusing (a red "FAIL" next to a red
+  "Rejected"). Entries can be deleted individually or the whole log cleared at once. See
   **What actually persists** below for exactly what that does and doesn't save.
+- **Four example cases, the same for every device.** So the Review Log isn't an empty page (or a
+  pile of duplicate seed data) the first time anyone opens it, four reference cases — one per
+  decision state — ship as part of the app itself rather than as data written into any one device's
+  storage. That means they show up identically everywhere the app is opened, hiding one on your
+  laptop doesn't remove it from your phone, and a decision you change on one only affects that
+  device's view of it. See **What actually persists**.
 - **Beverage type is either picked or auto-detected — and it's actually checked.** The category
   (distilled spirits / wine / beer) drives which category-specific rules would apply, so leaving it
   to guesswork was a gap: it used to be collected on the form but never compared against anything.
@@ -114,17 +125,22 @@ npm run gen:labels
 
 (uses `@napi-rs/canvas`, a dev-only dependency — not required at runtime).
 
-The first time the **Review Log** is opened with nothing in it, it seeds itself with four of these
-— one for each decision state (an Approved pass, a Rejected fail, a Flagged "needs review", and a
-still-Pending fail) — so there's something to look at right away, in every filter. See
-[lib/review-log-seed.ts](lib/review-log-seed.ts): the first two are real Claude output captured
-during testing; the other two are constructed directly from what's actually printed on their label
-images (this app generates its own sample labels, so that's known ground truth), specifically to
-land in the Review and Fail bands. All four run through the same deterministic comparison logic the
-app uses live — nothing fabricated, just baked in rather than fetched, so seeding costs zero API
-calls. It only happens once per browser (tracked separately from the log itself), so clearing the
-log later doesn't bring
-the samples back.
+Four of these are always in the **Review Log** — one for each decision state (an Approved pass, a
+Rejected fail, a Flagged "needs review", and a still-Pending fail) — so there's something to look
+at right away, in every filter, on every device. See [lib/review-log-seed.ts](lib/review-log-seed.ts):
+the first two are real Claude output captured during testing; the other two are constructed directly
+from what's actually printed on their label images (this app generates its own sample labels, so
+that's known ground truth), specifically to land in the Review and Fail bands. All four run through
+the same deterministic comparison logic the app uses live — nothing fabricated, just baked into the
+app rather than fetched, so this costs zero API calls.
+
+These four are shipped in the code (`REVIEW_LOG_SEED`), not written into any device's `localStorage`
+as data — that's deliberate, see **What actually persists** for why it means they're identical on
+every device by default. They can still be deleted from the list (the button reads "Hide" on the
+entry page to be precise about what that does) and decided on like anything else; both of those
+actions are recorded as a small per-device override rather than mutating the shared examples, so
+hiding one or changing its decision on your phone has no effect on what your laptop — or anyone
+else opening the deployed URL — sees.
 
 ### Build
 
@@ -156,27 +172,76 @@ Both paths show the source image, a per-field readout, and the processing time.
 Short version: **nothing leaves your browser, and the server keeps nothing at all.** Longer version,
 because this is the kind of thing worth being precise about:
 
-| | Persists? | Where | Survives a reload? | Visible to anyone else? |
+| | Persists? | Where | Survives a reload? | Same on every device? |
 |---|---|---|---|---|
-| The label image you upload | No | Sent to Claude for that one request, then discarded server-side | — | No |
-| Application data you type in | No | Only in page state (React), sent in that one request | No — clearing the form or reloading loses it | No |
-| A check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Review Log | **Yes** | No — never leaves your browser |
-| A check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` — unless it's a bundled static image (the two seeded examples), which is small enough to keep | Only for the seeded examples | No |
-| Your Approve/Reject/Flag decisions | **Yes** | Browser `localStorage`, alongside the log entry | **Yes** | No |
-| Anthropic API key | N/A | Server-side environment variable only | — | Never sent to the browser |
+| The label image you upload | No | Sent to Claude for that one request, then discarded server-side | — | N/A |
+| Application data you type in | No | Only in page state (React), sent in that one request | No — clearing the form or reloading loses it | N/A |
+| A real check's text result (fields, statuses, notes) | **Yes** | Browser `localStorage`, in the Review Log | **Yes** | No — this device only |
+| A real check's image, inside the Review Log | Only until you reload | Kept in memory for the current page load, dropped before writing to `localStorage` | No | No |
+| Your Approve/Reject/Flag decisions on a real check | **Yes** | Browser `localStorage`, alongside the log entry | **Yes** | No — this device only |
+| The four example cases (image, fields, default decision) | **Yes** | Shipped in the app's code (`lib/review-log-seed.ts`), not written to `localStorage` at all | **Yes** | **Yes** — identical everywhere by default |
+| Hiding an example, or changing its decision | **Yes** | A small separate `localStorage` override (which example IDs are hidden, and any decision changes) | **Yes** | No — this device only; a different device still sees the untouched default |
+| Anthropic API key | N/A | Server-side environment variable only | — | N/A — never sent to the browser at all |
 
-In plain terms: the Review Log is real and does persist — reload the page, close the tab, come back
-tomorrow, it's still there — but it lives only in that one browser, on that one device. It's not a
-database, nobody else who opens the deployed URL sees your log, it doesn't sync between your phone
-and your laptop, and clearing your browser's site data deletes it permanently with no way to
-recover it. The one thing it deliberately doesn't keep is the label photo itself past the current
-page load, specifically so a long day of checks doesn't run into browser storage limits
-(localStorage is typically capped around 5–10 MB per site, and photos are the only thing here large
-enough to hit that).
+In plain terms: your real checks in the Review Log are real and do persist — reload the page, close
+the tab, come back tomorrow, they're still there — but they live only in that one browser, on that
+one device. It's not a database, nobody else who opens the deployed URL sees your log, it doesn't
+sync between your phone and your laptop, and clearing your browser's site data deletes them
+permanently with no way to recover them. The one thing they deliberately don't keep is the label
+photo itself past the current page load, specifically so a long day of checks doesn't run into
+browser storage limits (localStorage is typically capped around 5–10 MB per site, and photos are the
+only thing here large enough to hit that).
 
-If you want the log to actually survive across people or devices — a real shared team queue — that
-needs a server-side database and is explicitly not what this prototype does; see
+The four **example** cases are the opposite in every one of those respects, on purpose: they're
+part of the app itself, so they're identical wherever it's opened, and the only thing that's ever
+local is whether *you* have chosen to hide one or change its decision on the device in front of you.
+
+If you want real check data to actually survive across people or devices — a real shared team
+queue — that needs a server-side database and is explicitly not what this prototype does; see
 **Trade-offs & limitations**.
+
+## Security
+
+What's actually in place, in one place, rather than scattered across other sections:
+
+- **The Anthropic API key never reaches the browser.** It's read from a server-side environment
+  variable ([lib/extract.ts](lib/extract.ts)) inside an API route that only runs on the server;
+  nothing in the client bundle references it, and `.env.local` is git-ignored so it never ends up
+  in the repo either. The only way to get it is to already have server access to the deployment.
+- **Every request is validated before it's trusted.** `ApplicationDataSchema` and
+  `LabelExtractionSchema` ([lib/schema.ts](lib/schema.ts)) are Zod schemas — malformed or
+  unexpected JSON from the client is rejected with a 400, not passed through. Uploaded files are
+  checked against an allowed MIME-type list and a 4 MB size cap
+  ([lib/constants.ts](lib/constants.ts)) both client-side (fast feedback) and server-side (the
+  actual authority — a client check is a courtesy, not a security boundary).
+- **Per-IP rate limiting** ([lib/rate-limit.ts](lib/rate-limit.ts)) sits in front of the only route
+  that spends API credits, specifically so a link to this demo can't be used to run up an unbounded
+  bill. It's a soft, best-effort guard, not a hard cap — see **Trade-offs & limitations** for the
+  honest limits of an in-memory limiter on serverless infrastructure, and set an actual spend cap on
+  the API key itself for a real guarantee.
+- **No authentication, by design, for this scope.** Anyone with the URL can run a check. There's no
+  login, no session, no cookie — which also means there's nothing here for CSRF or session-fixation
+  attacks to target. This is appropriate for an internal review/demo prototype and explicitly not
+  appropriate for a multi-tenant production system; see **Trade-offs & limitations**.
+- **Nothing server-side to steal.** There's no database, so there's no SQL/NoSQL injection surface
+  and no data store that could leak in a breach — every request's image and application data is
+  processed in memory and discarded once the response is sent (see **What actually persists**).
+- **No `dangerouslySetInnerHTML` of anything user-controlled.** The one place this app injects raw
+  HTML/script is the dark-mode init snippet in [app/layout.tsx](app/layout.tsx), and that string is
+  a hard-coded constant with no user input anywhere near it. Every other piece of extracted or
+  typed-in text renders through normal React, which escapes it by default.
+- **HTTPS everywhere**, provided by Vercel for the deployed URL — no plaintext HTTP path exists for
+  the production deployment.
+- **Client-side storage is origin-scoped and contains no more than what you typed in.** The Review
+  Log lives in this origin's `localStorage`; browsers don't let other sites read it, and it holds
+  only the check results themselves — no credentials, tokens, or anything beyond the application
+  data a user entered and the label's extracted text.
+- **What a real production deployment would still need** that this prototype deliberately doesn't
+  attempt: authentication/authorization, server-side audit logging with PII/retention controls,
+  bot/abuse protection beyond a soft rate limit, dependency vulnerability scanning in CI, and a
+  documented incident-response path for the API key if it were ever exposed. All of this was scoped
+  out per the "don't do anything crazy, we're not storing anything sensitive for this exercise"
+  guidance from the IT interview, not overlooked.
 
 ## Assumptions
 
@@ -271,15 +336,19 @@ lib/
   compare.ts                 Field-by-field comparison against application data
   self-check.ts               Per-field format validation with no application data
   rate-limit.ts                 Per-IP request throttling
-  review-log.ts                   localStorage read/write for the Review Log (image stripped
-                                    before saving, unless it's a small bundled path)
-  review-log-store.ts               Reactive in-memory store over review-log.ts — log/delete/
-                                      decide/clear, shared by the Check page and Review Log pages
-  review-log-seed.ts                  The two pre-computed examples seeded on first open
+  review-log.ts                   localStorage read/write for real Review Log entries (image
+                                    stripped before saving, unless it's a small bundled path) and
+                                    for the small per-device example-override list
+  review-log-store.ts               Reactive in-memory store — merges the four built-in examples
+                                      with real entries, log/delete/decide/clear, shared by the
+                                      Check page and Review Log pages
+  review-log-seed.ts                  The four permanent example cases (one per decision state)
   sample-data.ts                        Sample label metadata (dev/reference — regenerate seed
                                           data from this, nothing at runtime imports it directly)
 components/                                UI components (ThemeToggle.tsx = dark mode switch,
                                              ResultPanel.tsx exports `displayName` — brand name
-                                             over filename, used everywhere a check is listed)
+                                             over filename, used everywhere a check is listed;
+                                             DecisionControls.tsx = the Approve/Flag/Reject
+                                             buttons, shared by the Check page and Review Log)
 scripts/generate-sample-labels.ts             Synthetic label image generator
 ```

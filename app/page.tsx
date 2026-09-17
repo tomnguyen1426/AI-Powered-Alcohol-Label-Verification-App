@@ -15,7 +15,8 @@ import ImageDropzone from "@/components/ImageDropzone";
 import ApplicationForm from "@/components/ApplicationForm";
 import ResultPanel, { displayName } from "@/components/ResultPanel";
 import { OverallStatusBadge } from "@/components/StatusBadge";
-import { logCheck } from "@/lib/review-log-store";
+import DecisionControls from "@/components/DecisionControls";
+import { logCheck, useReviewLogEntry } from "@/lib/review-log-store";
 import type { ApplicationData, VerificationResult } from "@/lib/schema";
 
 const emptyApplication: ApplicationData = {
@@ -38,6 +39,7 @@ interface BatchItem {
   fileName: string;
   result?: VerificationResult;
   error?: string;
+  loggedAt?: number;
 }
 
 async function verifyOne(
@@ -88,6 +90,8 @@ export default function CheckPage() {
   const [progressNote, setProgressNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [singleResult, setSingleResult] = useState<VerificationResult | null>(null);
+  const [singleLoggedAt, setSingleLoggedAt] = useState<number | null>(null);
+  const singleEntry = useReviewLogEntry(singleLoggedAt ?? -1);
   const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<"all" | "ok" | "review" | "flagged" | "error">("all");
@@ -96,6 +100,7 @@ export default function CheckPage() {
 
   function resetOutputs() {
     setSingleResult(null);
+    setSingleLoggedAt(null);
     setBatchItems(null);
     setError(null);
   }
@@ -122,7 +127,7 @@ export default function CheckPage() {
         setError(outcome.error);
       } else if (outcome.result) {
         setSingleResult(outcome.result);
-        logCheck(outcome.result);
+        setSingleLoggedAt(logCheck(outcome.result).loggedAt);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -157,10 +162,10 @@ export default function CheckPage() {
         );
         completed += 1;
         setProgressNote(`Processing ${completed} of ${total}…`);
-        if (outcome.result) logCheck(outcome.result);
+        const loggedAt = outcome.result ? logCheck(outcome.result).loggedAt : undefined;
         setBatchItems((prev) => {
           const next = [...(prev ?? [])];
-          next[item.index] = { index: item.index, fileName: item.file.name, ...outcome };
+          next[item.index] = { index: item.index, fileName: item.file.name, ...outcome, loggedAt };
           return next;
         });
       }
@@ -292,7 +297,8 @@ export default function CheckPage() {
       </div>
 
       {singleResult && (
-        <div className="mt-8">
+        <div className="mt-8 space-y-4">
+          {singleEntry && <DecisionControls loggedAt={singleEntry.loggedAt} decision={singleEntry.decision} />}
           <ResultPanel result={singleResult} />
         </div>
       )}
@@ -346,7 +352,8 @@ export default function CheckPage() {
                   </div>
                 </button>
                 {expanded.has(item.index) && item.result && (
-                  <div className="border-t border-border p-3">
+                  <div className="space-y-4 border-t border-border p-3">
+                    <BatchItemDecision item={item} />
                     <ResultPanel result={item.result} />
                   </div>
                 )}
@@ -366,6 +373,12 @@ function SummaryCard({ label, value, tone }: { label: string; value: string | nu
       <p className={`mt-1 text-xl font-semibold ${tone ?? "text-foreground"}`}>{value}</p>
     </div>
   );
+}
+
+function BatchItemDecision({ item }: { item: BatchItem }) {
+  const entry = useReviewLogEntry(item.loggedAt ?? -1);
+  if (!entry) return null;
+  return <DecisionControls loggedAt={entry.loggedAt} decision={entry.decision} label="" />;
 }
 
 function BatchStatusIcon({ item }: { item: BatchItem }) {

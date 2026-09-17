@@ -1,20 +1,23 @@
 import type { ReviewLogEntry } from "./review-log";
 
-// Pre-computed examples shown the first time someone opens the Review Log
-// with nothing in it yet, so it's not just an empty page — one for each
-// decision state (Approved / Rejected / Flagged / Pending) and a spread of
-// outcomes (Pass / Needs Review / Fail). The first two are real Claude
-// extraction output for the bundled sample labels, captured during testing;
-// the other two are constructed directly from what's actually printed on
-// their label images (this project generates its own sample labels, so
-// that's known ground truth) to land deliberately in the Review and Fail
-// bands. All four are run through the same deterministic comparison logic
-// the app uses live — no live API call, so seeding costs nothing. loggedAt
-// is set in the past so they read as pre-existing rather than "just now".
+// Four permanent example cases, one per decision state (Approved / Rejected
+// / Flagged / Pending) and a spread of outcomes (Pass / Needs Review / Fail).
+// Marked `isExample: true` in lib/review-log-store.ts, which keeps them
+// present for every user, un-deletable, and immune to "Clear log" — they're
+// reference material, not real data, so they should never just be "there
+// the first time" and then gone. The first two are real Claude extraction
+// output for the bundled sample labels, captured during testing; the other
+// two are constructed directly from what's actually printed on their label
+// images (this project generates its own sample labels, so that's known
+// ground truth) to land deliberately in the Review and Fail bands. All four
+// run through the same deterministic comparison logic the app uses live —
+// no live API call, so this costs nothing. loggedAt is set in the past so
+// they read as pre-existing rather than "just now".
 export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
   {
     loggedAt: Date.now() - 4 * 60 * 60 * 1000,
     decision: "approved",
+    isExample: true,
     result: {
       id: "seed-old-tom-bourbon-clean",
       fileName: "old-tom-bourbon-clean.png",
@@ -63,6 +66,7 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
   {
     loggedAt: Date.now() - 3 * 60 * 60 * 1000,
     decision: "rejected",
+    isExample: true,
     result: {
       id: "seed-harbor-vodka-warning-titlecase",
       fileName: "harbor-vodka-warning-titlecase.png",
@@ -112,6 +116,7 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
   {
     loggedAt: Date.now() - 90 * 60 * 1000,
     decision: "flagged",
+    isExample: true,
     result: {
       id: "seed-castaway-import-rum",
       fileName: "castaway-import-rum.png",
@@ -167,6 +172,7 @@ export const REVIEW_LOG_SEED: ReviewLogEntry[] = [
   {
     loggedAt: Date.now() - 20 * 60 * 1000,
     decision: "pending",
+    isExample: true,
     result: {
       id: "seed-summit-rum-abv-mismatch",
       fileName: "summit-rum-abv-mismatch.png",

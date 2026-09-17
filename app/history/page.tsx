@@ -182,6 +182,11 @@ export default function HistoryPage() {
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {displayName(entry.result)}
               </span>
+              {entry.isExample && (
+                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+                  Example
+                </span>
+              )}
               {entry.decision === "pending" ? (
                 <OverallStatusBadge status={entry.result.overallStatus} mode={entry.result.mode} size="sm" />
               ) : (
@@ -207,7 +212,10 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => {
-                if (confirm(`Delete "${displayName(entry.result)}" from the review log?`)) deleteEntry(entry.loggedAt);
+                const message = entry.isExample
+                  ? `Hide the "${displayName(entry.result)}" example on this device? It'll be back if you clear browser data or open the app on another device.`
+                  : `Delete "${displayName(entry.result)}" from the review log?`;
+                if (confirm(message)) deleteEntry(entry.loggedAt);
               }}
               aria-label={`Delete ${displayName(entry.result)}`}
               className="mr-3 shrink-0 rounded-md p-1.5 text-muted hover:bg-surface hover:text-rose-600 dark:hover:text-rose-400"

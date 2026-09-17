@@ -2,18 +2,11 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, X, Flag, Trash2 } from "lucide-react";
-import clsx from "clsx";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import ResultPanel, { displayName } from "@/components/ResultPanel";
-import { useReviewLogEntry, setDecision, deleteEntry } from "@/lib/review-log-store";
+import DecisionControls from "@/components/DecisionControls";
+import { useReviewLogEntry, deleteEntry } from "@/lib/review-log-store";
 import type { ReviewDecision } from "@/lib/review-log";
-
-const decisionMeta: Record<ReviewDecision, { label: string; classes: string }> = {
-  pending: { label: "Pending", classes: "text-muted bg-surface" },
-  approved: { label: "Approved", classes: "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40" },
-  rejected: { label: "Rejected", classes: "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40" },
-  flagged: { label: "Flagged for follow-up", classes: "text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/40" },
-};
 
 export default function ReviewLogEntryPage() {
   const params = useParams<{ loggedAt: string }>();
@@ -21,10 +14,8 @@ export default function ReviewLogEntryPage() {
   const loggedAt = Number(params.loggedAt);
   const entry = useReviewLogEntry(loggedAt);
 
-  function handleDecision(decision: ReviewDecision) {
+  function handleDecided(next: ReviewDecision) {
     if (!entry) return;
-    const next = entry.decision === decision ? "pending" : decision;
-    setDecision(entry.loggedAt, decision);
     const params = new URLSearchParams({ decided: next, name: displayName(entry.result) });
     router.push(`/history?${params.toString()}`);
   }
@@ -53,7 +44,14 @@ export default function ReviewLogEntryPage() {
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{displayName(entry.result)}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{displayName(entry.result)}</h1>
+            {entry.isExample && (
+              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+                Example
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted">
             Checked {new Date(entry.loggedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
           </p>
@@ -61,7 +59,10 @@ export default function ReviewLogEntryPage() {
         <button
           type="button"
           onClick={() => {
-            if (confirm(`Delete "${displayName(entry.result)}" from the review log?`)) {
+            const message = entry.isExample
+              ? `Hide the "${displayName(entry.result)}" example on this device? It'll be back if you clear browser data or open the app on another device.`
+              : `Delete "${displayName(entry.result)}" from the review log?`;
+            if (confirm(message)) {
               deleteEntry(entry.loggedAt);
               router.push("/history");
             }
@@ -69,69 +70,15 @@ export default function ReviewLogEntryPage() {
           className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface hover:text-rose-600 dark:hover:text-rose-400"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Delete
+          {entry.isExample ? "Hide" : "Delete"}
         </button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <p className="mb-3 text-sm font-medium text-foreground">Your decision</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <DecisionButton
-            active={entry.decision === "approved"}
-            onClick={() => handleDecision("approved")}
-            label="Approve"
-            Icon={Check}
-            activeClasses="bg-emerald-600 text-white border-emerald-600"
-          />
-          <DecisionButton
-            active={entry.decision === "flagged"}
-            onClick={() => handleDecision("flagged")}
-            label="Flag for follow-up"
-            Icon={Flag}
-            activeClasses="bg-amber-600 text-white border-amber-600"
-          />
-          <DecisionButton
-            active={entry.decision === "rejected"}
-            onClick={() => handleDecision("rejected")}
-            label="Reject"
-            Icon={X}
-            activeClasses="bg-rose-600 text-white border-rose-600"
-          />
-          <span className={clsx("ml-auto rounded-full px-2.5 py-1 text-xs font-medium", decisionMeta[entry.decision].classes)}>
-            Currently: {decisionMeta[entry.decision].label}
-          </span>
-        </div>
+      <div className="mb-6">
+        <DecisionControls loggedAt={entry.loggedAt} decision={entry.decision} onDecided={handleDecided} />
       </div>
 
       <ResultPanel result={entry.result} />
     </div>
-  );
-}
-
-function DecisionButton({
-  active,
-  onClick,
-  label,
-  Icon,
-  activeClasses,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  Icon: typeof Check;
-  activeClasses: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={clsx(
-        "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors",
-        active ? activeClasses : "border-border text-foreground hover:bg-surface",
-      )}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
   );
 }

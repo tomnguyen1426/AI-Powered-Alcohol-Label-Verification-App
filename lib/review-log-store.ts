@@ -1,41 +1,43 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { loadReviewLog, saveReviewLog, type ReviewDecision, type ReviewLogEntry } from "./review-log";
+import {
+  loadExampleOverrides,
+  loadReviewLog,
+  saveExampleOverrides,
+  saveReviewLog,
+  type ReviewDecision,
+  type ReviewLogEntry,
+} from "./review-log";
 import { REVIEW_LOG_SEED } from "./review-log-seed";
 import type { VerificationResult } from "./schema";
 
-const SEEDED_KEY = "labelcheck.review-log-seeded.v1";
-
-function initialEntries(): ReviewLogEntry[] {
-  if (typeof window === "undefined") return [];
-  const stored = loadReviewLog();
-  if (stored.length > 0) return stored;
-
-  // Only seed the very first time this browser ever opens the log — once
-  // someone has real entries (or has deliberately cleared them), don't keep
-  // bringing the samples back.
-  let alreadySeeded = false;
-  try {
-    alreadySeeded = localStorage.getItem(SEEDED_KEY) === "1";
-  } catch {
-    // localStorage unavailable — just don't seed, no harm either way.
-    return [];
-  }
-  if (alreadySeeded) return [];
-
-  try {
-    localStorage.setItem(SEEDED_KEY, "1");
-  } catch {
-    // ignore
-  }
-  saveReviewLog(REVIEW_LOG_SEED);
-  return REVIEW_LOG_SEED;
+// The four example cases are shipped in the app itself (REVIEW_LOG_SEED),
+// not stored as user data — every device shows the same four by default,
+// regardless of that device's localStorage. Per-device overrides (dismissed
+// / decision changes) are kept in a small separate key so acting on an
+// example here doesn't affect what a different device sees.
+function buildExamples(overrides: ReturnType<typeof loadExampleOverrides>): ReviewLogEntry[] {
+  return REVIEW_LOG_SEED.filter((seed) => !overrides.dismissed.includes(seed.result.id)).map((seed) => ({
+    ...seed,
+    decision: overrides.decisions[seed.result.id] ?? seed.decision,
+  }));
 }
 
-let entries: ReviewLogEntry[] = initialEntries();
+function byNewestFirst(a: ReviewLogEntry, b: ReviewLogEntry) {
+  return b.loggedAt - a.loggedAt;
+}
+
+let exampleOverrides = typeof window !== "undefined" ? loadExampleOverrides() : { dismissed: [], decisions: {} };
+let realEntries: ReviewLogEntry[] = typeof window !== "undefined" ? loadReviewLog() : [];
+let entries: ReviewLogEntry[] = [...buildExamples(exampleOverrides), ...realEntries].sort(byNewestFirst);
+
 const listeners = new Set<() => void>();
 const EMPTY: ReviewLogEntry[] = [];
+
+function recompute() {
+  entries = [...buildExamples(exampleOverrides), ...realEntries].sort(byNewestFirst);
+}
 
 function notify() {
   for (const listener of listeners) listener();
@@ -54,29 +56,53 @@ function getServerSnapshot() {
   return EMPTY;
 }
 
-export function logCheck(result: VerificationResult) {
-  entries = [{ loggedAt: Date.now(), decision: "pending", result }, ...entries];
-  saveReviewLog(entries);
+export function logCheck(result: VerificationResult): ReviewLogEntry {
+  const entry: ReviewLogEntry = { loggedAt: Date.now(), decision: "pending", result };
+  realEntries = [entry, ...realEntries];
+  saveReviewLog(realEntries);
+  recompute();
   notify();
+  return entry;
 }
 
 export function setDecision(loggedAt: number, decision: ReviewDecision) {
-  entries = entries.map((entry) =>
-    entry.loggedAt === loggedAt ? { ...entry, decision: entry.decision === decision ? "pending" : decision } : entry,
-  );
-  saveReviewLog(entries);
+  const target = entries.find((e) => e.loggedAt === loggedAt);
+  if (!target) return;
+  const next = target.decision === decision ? "pending" : decision;
+
+  if (target.isExample) {
+    exampleOverrides = { ...exampleOverrides, decisions: { ...exampleOverrides.decisions, [target.result.id]: next } };
+    saveExampleOverrides(exampleOverrides);
+  } else {
+    realEntries = realEntries.map((e) => (e.loggedAt === loggedAt ? { ...e, decision: next } : e));
+    saveReviewLog(realEntries);
+  }
+  recompute();
   notify();
 }
 
 export function deleteEntry(loggedAt: number) {
-  entries = entries.filter((entry) => entry.loggedAt !== loggedAt);
-  saveReviewLog(entries);
+  const target = entries.find((e) => e.loggedAt === loggedAt);
+  if (!target) return;
+
+  if (target.isExample) {
+    // Dismissing an example only affects this device — a different device
+    // (or this one after clearing site data) sees it again by default.
+    exampleOverrides = { ...exampleOverrides, dismissed: [...exampleOverrides.dismissed, target.result.id] };
+    saveExampleOverrides(exampleOverrides);
+  } else {
+    realEntries = realEntries.filter((e) => e.loggedAt !== loggedAt);
+    saveReviewLog(realEntries);
+  }
+  recompute();
   notify();
 }
 
 export function clearReviewLog() {
-  entries = [];
-  saveReviewLog(entries);
+  // Clears real entries only; the four built-in examples are unaffected.
+  realEntries = [];
+  saveReviewLog(realEntries);
+  recompute();
   notify();
 }
 
